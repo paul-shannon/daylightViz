@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Minimal Mol* Viewer</title>
+    <!-- 1. Include Mol* CSS -->
+    <link rel="stylesheet" type="text/css"
+          href="https://cdn.jsdelivr.net/npm/molstar@latest/build/viewer/molstar.css" />
+    <style>
+        /* Define the size of the viewer container */
+        #my-viewer {
+            width: 90vw; //800px;
+            height: 90vh;
+            position: relative;
+            margin: 20px auto;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <div id="my-viewer"></div>
+    <script type="text/javascript"
+            src="https://cdn.jsdelivr.net/npm/molstar@latest/build/viewer/molstar.js">
+    </script>
+
+    <script type="text/javascript">
+            molstar.Viewer.create('my-viewer', {
+            layoutIsExpanded: false,
+            layoutShowControls: false,
+            viewportShowExpand: false,
+            collapseLeftPanel: true
+        }).then(viewer => {
+            //viewer.loadPdb('http://127.0.0.1:9119/1IZL.pdb');
+            viewer.loadStructureFromUrl('./1IZL.pdb', format='pdb');
+        });
+    </script>
+
+</body>
+</html>
