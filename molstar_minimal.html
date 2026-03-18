@@ -77,14 +77,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // The simplest way to blank the view is to disable the WebGL canvas.
     // Later you can drive individual component visibility via:
     //   viewer.plugin.managers.structure.hierarchy.current.structures
-    const btn = document.getElementById('toggle-btn');
+    const btn      = document.getElementById('toggle-btn');
+    const viewerEl = document.getElementById('viewer');
     let visible = true;
 
     btn.addEventListener('click', () => {
         visible = !visible;
-        // canvas3d.setProps({ enabled: false }) stops rendering and clears
-        // the canvas; { enabled: true } resumes it.
-        viewer.plugin.canvas3d.setProps({ enabled: visible });
+        viewerEl.style.visibility = visible ? 'visible' : 'hidden';
         btn.textContent = visible ? 'Hide' : 'Show';
     });
 
