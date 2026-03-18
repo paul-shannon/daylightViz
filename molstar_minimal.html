@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mol* Minimal</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/molstar@latest/build/viewer/molstar.css">
+    <style>
+        body { margin: 0; background: #111; display: flex; flex-direction: column; height: 100vh; }
+
+        #controls {
+            padding: 10px;
+            background: #1e1e1e;
+        }
+
+        button {
+            padding: 6px 18px;
+            background: #333;
+            color: #eee;
+            border: 1px solid #555;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        button:hover { background: #444; }
+
+        #viewer {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+
+<div id="controls">
+    <button id="toggle-btn">Hide</button>
+</div>
+
+<div id="viewer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/molstar@latest/build/viewer/molstar.js"></script>
+<script>
+// ── Edit this to point to your PDB file (relative to this HTML file). ──────
+// Serve with a local HTTP server, e.g.:  python3 -m http.server 8000
+const PDB_FILE   = 'my_structure.pdb';   // filename
+const PDB_FORMAT = 'pdb';               // 'pdb' or 'mmcif'
+// ────────────────────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', async () => {
+
+    // Create viewer with ALL built-in UI panels disabled.
+    const viewer = await molstar.Viewer.create('viewer', {
+        layoutIsExpanded:        false,
+        layoutShowControls:      false,   // right-side control panel
+        layoutShowRemoteState:   false,
+        layoutShowSequence:      false,   // sequence bar at top
+        layoutShowLog:           false,
+        layoutShowLeftPanel:     false,   // tree / component panel
+        viewportShowExpand:      false,   // fullscreen button
+        viewportShowSelectionMode: false,
+        viewportShowAnimation:   false,
+    });
+
+    // Load the structure. loadStructureFromUrl handles fetch + parsing.
+    await viewer.loadStructureFromUrl(PDB_FILE, PDB_FORMAT, false);
+
+    // ── Show / Hide toggle ────────────────────────────────────────────────
+    // viewer.plugin is the low-level PluginContext — the entry point for
+    // everything: state, managers, canvas3d, commands, etc.
+    //
+    // The simplest way to blank the view is to disable the WebGL canvas.
+    // Later you can drive individual component visibility via:
+    //   viewer.plugin.managers.structure.hierarchy.current.structures
+    const btn = document.getElementById('toggle-btn');
+    let visible = true;
+
+    btn.addEventListener('click', () => {
+        visible = !visible;
+        // canvas3d.setProps({ enabled: false }) stops rendering and clears
+        // the canvas; { enabled: true } resumes it.
+        viewer.plugin.canvas3d.setProps({ enabled: visible });
+        btn.textContent = visible ? 'Hide' : 'Show';
+    });
+
+});
+</script>
+</body>
+</html>
