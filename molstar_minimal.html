@@ -46,45 +46,66 @@
 
 <script src="https://cdn.jsdelivr.net/npm/molstar@latest/build/viewer/molstar.js"></script>
 <script>
-// ── Edit this to point to your PDB file (relative to this HTML file). ──────
-// Serve with a local HTTP server, e.g.:  python3 -m http.server 8000
-const PDB_FILE   = 'my_structure.pdb';   // filename
-const PDB_FORMAT = 'pdb';               // 'pdb' or 'mmcif'
-// ────────────────────────────────────────────────────────────────────────────
+const PDB_FILE   = 'chlorophyll.pdb';
+const PDB_FORMAT = 'pdb';
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-    // Create viewer with ALL built-in UI panels disabled.
     const viewer = await molstar.Viewer.create('viewer', {
-        layoutIsExpanded:        false,
-        layoutShowControls:      false,   // right-side control panel
-        layoutShowRemoteState:   false,
-        layoutShowSequence:      false,   // sequence bar at top
-        layoutShowLog:           false,
-        layoutShowLeftPanel:     false,   // tree / component panel
-        viewportShowExpand:      false,   // fullscreen button
+        layoutIsExpanded:          false,
+        layoutShowControls:        false,
+        layoutShowRemoteState:     false,
+        layoutShowSequence:        false,
+        layoutShowLog:             false,
+        layoutShowLeftPanel:       false,
+        viewportShowExpand:        false,
         viewportShowSelectionMode: false,
-        viewportShowAnimation:   false,
+        viewportShowAnimation:     false,
     });
 
-    // Load the structure. loadStructureFromUrl handles fetch + parsing.
     await viewer.loadStructureFromUrl(PDB_FILE, PDB_FORMAT, false);
 
-    // ── Show / Hide toggle ────────────────────────────────────────────────
-    // viewer.plugin is the low-level PluginContext — the entry point for
-    // everything: state, managers, canvas3d, commands, etc.
+    // ── Plugin Commands ───────────────────────────────────────────────────
     //
-    // The simplest way to blank the view is to disable the WebGL canvas.
-    // Later you can drive individual component visibility via:
-    //   viewer.plugin.managers.structure.hierarchy.current.structures
-    const btn      = document.getElementById('toggle-btn');
-    const viewerEl = document.getElementById('viewer');
-    let visible = true;
+    // Mol* keeps everything — data downloads, trajectories, structures,
+    // components, representations — as nodes in an immutable state tree:
+    //
+    //   plugin.state.data  (the tree)
+    //     └── structure node  (.ref = unique string id)
+    //           └── component node  (.ref)   ← your future hide/show targets
+    //                 └── representation node  (.ref)
+    //
+    // PluginCommands are the sanctioned way to mutate the tree.
+    // PluginCommands.State.ToggleVisibility flips a node and all its children.
+    //
+    // The friendly view of the tree is the hierarchy manager:
+    //   plugin.managers.structure.hierarchy.current
+    //     .structures[]          ← one per loaded file
+    //       .components[]        ← sub-selections (chains, residues, elements…)
+    //         .representations[] ← cartoon, ball-and-stick, spacefill…
+    //
+    // Each item's .cell is its live state-tree node.
+    // .cell.transform.ref  is the ref string.
+    // .cell.state.isHidden is its current visibility.
 
-    btn.addEventListener('click', () => {
-        visible = !visible;
-        viewerEl.style.visibility = visible ? 'visible' : 'hidden';
-        btn.textContent = visible ? 'Hide' : 'Show';
+    const { plugin } = viewer;
+    const btn = document.getElementById('toggle-btn');
+
+    btn.addEventListener('click', async () => {
+        const structures = plugin.managers.structure.hierarchy.current.structures;
+        if (!structures.length) return;
+
+        // Toggle the whole structure node (all components + representations).
+        // Swap structures[0] for structures[0].components[i] to toggle a part.
+        const ref = structures[0].cell.transform.ref;
+
+        await molstar.PluginCommands.State.ToggleVisibility(plugin, {
+            state: plugin.state.data,
+            ref,
+        });
+
+        const hidden = !!structures[0].cell.state.isHidden;
+        btn.textContent = hidden ? 'Show' : 'Hide';
     });
 
 });
