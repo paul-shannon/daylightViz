@@ -1,41 +1,56 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>NGL + THREE.js Demo</title>
+  <title>NGL + custom geometry demo</title>
   <style>
     body { margin: 0; background: #1a1a2e; }
     #viewport { width: 100vw; height: 100vh; }
   </style>
-
-  <!-- 1. Load NGL first (bundles THREE r128 internally) -->
   <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
-
-  <!-- 2. Load THREE r128 separately — same version NGL uses, so objects are compatible -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 </head>
 <body>
   <div id="viewport"></div>
   <script>
+    // WHY NOT raw THREE.js:
+    //   NGL bundles its own private copy of THREE inside its closure.
+    //   Loading a second copy from CDN (even the same version) creates two
+    //   separate WebGL program registries.  When NGL's renderer tries to
+    //   compile shaders for a mesh whose material came from the outside copy
+    //   it can't find its own uniform structures → "getUniforms" crash.
+    //
+    // SOLUTION: use NGL.Shape — NGL's own API for custom geometry.
+    //   It runs entirely inside NGL's closure, so there is no cross-copy conflict.
+
     document.addEventListener("DOMContentLoaded", async () => {
       const stage = new NGL.Stage("viewport", { backgroundColor: "black" });
 
-      // Load a molecule
-      const comp = await stage.loadFile("rcsb://1CRN");
+      // ── molecule ──────────────────────────────────────────────────────────
+      const comp = await stage.loadFile("1crn.pdb");
       comp.addRepresentation("cartoon", { color: "chainname" });
       comp.autoView();
 
-      // THREE.js is now available as the global `THREE` from the CDN script above.
-      // Add custom THREE objects directly into NGL's internal scene.
-      const geometry = new THREE.BoxGeometry(5, 5, 5);
-      const material = new THREE.MeshBasicMaterial({ color: 0xff4444, wireframe: true });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.set(10, 0, 0);
+      // ── custom geometry via NGL.Shape ─────────────────────────────────────
+      // Shape takes: name, { color, opacity, ... }
+      const shape = new NGL.Shape("annotations");
 
-      // NGL's scene is a standard THREE.Scene
-      stage.viewer.scene.add(mesh);
+      // addSphere( center[x,y,z], color[r,g,b 0-1], radius, label )
+      shape.addSphere([10, 0, 0], [1, 0.2, 0.2], 2, "red sphere");
 
-      // Trigger a re-render so the custom object appears
-      stage.viewer.requestRender();
+      // addBox( center, color, size )
+      shape.addBox([0, 10, 0], [0.2, 1, 0.2], 3);
+
+      // addCylinder( start, end, color, radius )
+      shape.addCylinder([-5, -5, 0], [5, 5, 0], [0.2, 0.6, 1], 0.5);
+
+      // addArrow( start, end, color, radius )
+      shape.addArrow([0, 0, -8], [0, 0, 8], [1, 1, 0], 0.4);
+
+      // addMesh lets you supply raw triangles for any arbitrary shape
+      // addMesh( vertices Float32Array, normals Float32Array, colors? )
+
+      const shapeComp = stage.addComponentFromObject(shape);
+      shapeComp.addRepresentation("buffer");
+      shapeComp.autoView();
     });
   </script>
 </body>
