@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mol* PDB Viewer</title>
+
+    <!-- Mol* CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/molstar@latest/build/viewer/molstar.css">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: 12px 20px;
+            background: #16213e;
+            border-bottom: 1px solid #0f3460;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+
+        header h1 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #4fc3f7;
+            letter-spacing: 0.5px;
+        }
+
+        .controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        label.file-btn {
+            display: inline-block;
+            padding: 7px 16px;
+            background: #0f3460;
+            border: 1px solid #4fc3f7;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #4fc3f7;
+            transition: background 0.2s;
+        }
+
+        label.file-btn:hover {
+            background: #1a4a7a;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        #file-name {
+            font-size: 0.8rem;
+            color: #9e9e9e;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #status {
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 3px;
+            display: none;
+        }
+
+        #status.loading {
+            display: inline-block;
+            background: #1a3a5c;
+            color: #4fc3f7;
+        }
+
+        #status.error {
+            display: inline-block;
+            background: #4a1a1a;
+            color: #ef5350;
+        }
+
+        #viewer-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #molstar-viewer {
+            width: 100%;
+            height: 100%;
+        }
+
+        #drop-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            background: rgba(26, 26, 46, 0.92);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #drop-overlay.active {
+            background: rgba(15, 52, 96, 0.85);
+            border: 3px dashed #4fc3f7;
+        }
+
+        #drop-overlay .icon {
+            font-size: 3rem;
+            opacity: 0.6;
+        }
+
+        #drop-overlay p {
+            font-size: 1rem;
+            color: #9e9e9e;
+        }
+
+        #drop-overlay p span {
+            color: #4fc3f7;
+            cursor: pointer;
+            text-decoration: underline;
+            pointer-events: all;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Mol* PDB Viewer</h1>
+        <div class="controls">
+            <span id="file-name">No file loaded</span>
+            <label class="file-btn" for="file-input">Open PDB / mmCIF</label>
+            <input type="file" id="file-input" accept=".pdb,.cif,.mmcif,.ent,.gz">
+            <span id="status"></span>
+        </div>
+    </header>
+
+    <div id="viewer-container">
+        <div id="molstar-viewer"></div>
+        <div id="drop-overlay">
+            <div class="icon">🧬</div>
+            <p>Drop a <strong>.pdb</strong> or <strong>.cif</strong> file here, or
+               <span id="browse-link">browse to open one</span>
+            </p>
+        </div>
+    </div>
+
+    <!-- Mol* JS bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/molstar@latest/build/viewer/molstar.js"></script>
+
+    <script>
+    (async () => {
+        // ── bootstrap Mol* ──────────────────────────────────────────────────
+        const { Viewer } = molstar;
+
+        const viewer = await Viewer.create('molstar-viewer', {
+            layoutIsExpanded: false,
+            layoutShowControls: true,
+            layoutShowRemoteState: false,
+            layoutShowSequence: true,
+            layoutShowLog: false,
+            layoutShowLeftPanel: true,
+            viewportShowExpand: true,
+            viewportShowSelectionMode: true,
+            viewportShowAnimation: true,
+        });
+
+        // ── helpers ─────────────────────────────────────────────────────────
+        const statusEl  = document.getElementById('status');
+        const fileLabel = document.getElementById('file-name');
+        const overlay   = document.getElementById('drop-overlay');
+
+        function setStatus(msg, type) {
+            statusEl.textContent = msg;
+            statusEl.className = type || '';
+        }
+
+        function hideOverlay() {
+            overlay.style.display = 'none';
+        }
+
+        /**
+         * Determine Mol* format from file name.
+         * Mol* accepts: 'pdb', 'mmcif', 'gro', 'sdf', 'mol2', …
+         */
+        function formatFromName(name) {
+            const lower = name.replace(/\.gz$/i, '').toLowerCase();
+            if (lower.endsWith('.pdb') || lower.endsWith('.ent')) return 'pdb';
+            if (lower.endsWith('.cif') || lower.endsWith('.mmcif'))  return 'mmcif';
+            return 'pdb'; // fallback
+        }
+
+        async function loadFile(file) {
+            setStatus('Loading…', 'loading');
+            fileLabel.textContent = file.name;
+
+            try {
+                const url    = URL.createObjectURL(file);
+                const format = formatFromName(file.name);
+
+                await viewer.loadStructureFromUrl(url, format, false);
+
+                URL.revokeObjectURL(url);
+                setStatus('');
+                hideOverlay();
+            } catch (err) {
+                console.error(err);
+                setStatus('Failed to load file', 'error');
+            }
+        }
+
+        // ── file input ───────────────────────────────────────────────────────
+        document.getElementById('file-input').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (file) loadFile(file);
+            e.target.value = ''; // reset so same file can be re-opened
+        });
+
+        // ── "browse" link inside overlay ─────────────────────────────────────
+        document.getElementById('browse-link').addEventListener('click', () => {
+            document.getElementById('file-input').click();
+        });
+
+        // ── drag-and-drop ────────────────────────────────────────────────────
+        const container = document.getElementById('viewer-container');
+
+        container.addEventListener('dragover', e => {
+            e.preventDefault();
+            overlay.style.display = 'flex';
+            overlay.classList.add('active');
+        });
+
+        container.addEventListener('dragleave', e => {
+            if (!container.contains(e.relatedTarget)) {
+                overlay.classList.remove('active');
+            }
+        });
+
+        container.addEventListener('drop', e => {
+            e.preventDefault();
+            overlay.classList.remove('active');
+            const file = e.dataTransfer.files[0];
+            if (file) loadFile(file);
+        });
+    })();
+    </script>
+</body>
+</html>
