@@ -85,12 +85,23 @@
         norms.push(...n, ...n, ...n);   // flat shading: same normal for all 3 verts
       }
 
-      // addMesh( vertices Float32Array, normals Float32Array, colors, indices, name )
+      // addMesh requires an explicit colors Float32Array — passing undefined crashes
+      // with "Cannot read properties of undefined (reading 'toArray')".
+      // 3 RGB floats per vertex, same vertex count as verts.length / 3.
+      const pyramidColor = [1.0, 0.5, 0.1];   // orange
+      const colors = new Float32Array(verts.length);
+      for (let i = 0; i < verts.length / 3; i++) {
+        colors[i * 3]     = pyramidColor[0];
+        colors[i * 3 + 1] = pyramidColor[1];
+        colors[i * 3 + 2] = pyramidColor[2];
+      }
+
+      // addMesh( vertices Float32Array, normals Float32Array, colors Float32Array, indices, name )
       shape.addMesh(
         new Float32Array(verts),
         new Float32Array(norms),
-        undefined,    // per-vertex colors (undefined = use shape default)
-        undefined,    // indices (undefined = non-indexed)
+        colors,       // per-vertex RGB, 3 floats per vertex
+        undefined,    // indices (undefined = non-indexed, draw in order)
         "pyramid"
       );
 
