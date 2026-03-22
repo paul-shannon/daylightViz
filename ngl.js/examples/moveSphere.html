@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>NGL Move Sphere Demo</title>
+  <title>NGL Move Sphere and Molecule Demo</title>
   <style>
     body { margin: 0; background: #1a1a2e; }
     #viewport { width: 100vw; height: 100vh; }
@@ -64,8 +64,30 @@
         setTimeout(animate, 50);  // ~20fps
       }
 
+      // After sphere animation, move the molecule
+      function animateMolecule() {
+        let mFrame = 0;
+        const mSteps = 60;
+
+        function step() {
+          if (mFrame > mSteps) return;
+          const t = mFrame / mSteps;
+          const newX = (t - 0.5) * 30;          // slide left to right
+          const newY = Math.sin(t * Math.PI) * 8; // arc upward
+
+          // Molecule component supports in-place position update — no recreate needed
+          comp.setPosition([newX, newY, 0]);
+          stage.viewer.requestRender();
+
+          mFrame++;
+          setTimeout(step, 50);
+        }
+        step();
+      }
+
       // Start animation after a short delay so the molecule loads visibly
       setTimeout(animate, 1000);
+      setTimeout(animateMolecule, 1000 + 60 * 50 + 500); // start after sphere finishes
     });
   </script>
 </body>
