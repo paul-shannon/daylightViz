@@ -36,6 +36,15 @@
 
       // Trigger a re-render so the custom object appears
       stage.viewer.requestRender();
+
+      // Log canvas coordinates on click
+      const canvas = stage.viewer.renderer.domElement;
+      canvas.addEventListener('click', (event) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        console.log('Canvas coords:', x, y);
+      });
     });
   </script>
 </body>
