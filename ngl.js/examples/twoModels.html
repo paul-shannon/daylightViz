@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NGL Two Independent Models</title>
+  <style>
+    body { margin: 0; background: #1a1a2e; }
+    #viewport { width: 100vw; height: 100vh; }
+  </style>
+  <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
+</head>
+<body>
+  <div id="viewport"></div>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const stage = new NGL.Stage("viewport", { backgroundColor: "black" });
+
+      // Load the same PDB twice — each call returns an independent component
+      const comp1 = await stage.loadFile("./1crn.pdb");
+      comp1.addRepresentation("cartoon", { color: "chainname" });
+
+      const comp2 = await stage.loadFile("./1crn.pdb");
+      comp2.addRepresentation("cartoon", { color: "residueindex" });
+
+      // Place them side by side to start
+      comp1.setPosition([-15, 0, 0]);
+      comp2.setPosition([ 15, 0, 0]);
+      stage.autoView();
+
+      // Animate: comp1 orbits left side, comp2 spins in place on right side
+      let frame = 0;
+      const steps = 120;
+
+      function animate() {
+        if (frame > steps) return;
+        const t = frame / steps;
+        const angle = t * Math.PI * 2;  // full rotation
+
+        // comp1: circular orbit in XZ plane
+        comp1.setPosition([
+          -15 + Math.cos(angle) * 5,
+          Math.sin(angle) * 3,
+          Math.sin(angle) * 5
+        ]);
+
+        // comp2: spin in place around Y axis
+        comp2.setRotation([0, angle, 0]);
+
+        stage.viewer.requestRender();
+        frame++;
+        setTimeout(animate, 50);
+      }
+
+      setTimeout(animate, 800);
+    });
+  </script>
+</body>
+</html>
