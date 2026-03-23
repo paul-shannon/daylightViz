@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NGL - Two Independent Molecules</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #111; font-family: monospace; color: #ccc; display: flex; height: 100vh; }
+
+    #viewport { flex: 1; }
+
+    #controls {
+      width: 300px;
+      background: #1a1a1a;
+      border-left: 1px solid #333;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .mol-panel {
+      border: 1px solid #444;
+      border-radius: 4px;
+      padding: 10px;
+    }
+
+    .mol-panel h3 {
+      font-size: 13px;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #333;
+    }
+
+    .mol-a h3 { color: #6af; }
+    .mol-b h3 { color: #fa6; }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .row label {
+      width: 40px;
+      font-size: 11px;
+      color: #888;
+      flex-shrink: 0;
+    }
+
+    .row input[type=range] {
+      flex: 1;
+      accent-color: #555;
+    }
+
+    .row .val {
+      width: 38px;
+      font-size: 11px;
+      text-align: right;
+      color: #aaa;
+    }
+
+    .section-label {
+      font-size: 10px;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 8px 0 4px;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 6px;
+      padding: 5px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      color: #aaa;
+      font-family: monospace;
+      font-size: 11px;
+      cursor: pointer;
+      border-radius: 3px;
+    }
+    button:hover { background: #333; }
+  </style>
+  <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
+</head>
+<body>
+  <div id="viewport"></div>
+
+  <div id="controls">
+    <!-- Molecule A -->
+    <div class="mol-panel mol-a">
+      <h3>Molecule A — cartoon</h3>
+      <div class="section-label">Position</div>
+      <div class="row"><label>X</label><input type="range" id="a-px" min="-40" max="40" value="-12" step="0.5"><span class="val" id="a-px-v">-12</span></div>
+      <div class="row"><label>Y</label><input type="range" id="a-py" min="-40" max="40" value="0"   step="0.5"><span class="val" id="a-py-v">0</span></div>
+      <div class="row"><label>Z</label><input type="range" id="a-pz" min="-40" max="40" value="0"   step="0.5"><span class="val" id="a-pz-v">0</span></div>
+      <div class="section-label">Rotation (°)</div>
+      <div class="row"><label>X</label><input type="range" id="a-rx" min="-180" max="180" value="0" step="1"><span class="val" id="a-rx-v">0°</span></div>
+      <div class="row"><label>Y</label><input type="range" id="a-ry" min="-180" max="180" value="0" step="1"><span class="val" id="a-ry-v">0°</span></div>
+      <div class="row"><label>Z</label><input type="range" id="a-rz" min="-180" max="180" value="0" step="1"><span class="val" id="a-rz-v">0°</span></div>
+      <button id="a-reset">Reset A</button>
+    </div>
+
+    <!-- Molecule B -->
+    <div class="mol-panel mol-b">
+      <h3>Molecule B — ball+stick</h3>
+      <div class="section-label">Position</div>
+      <div class="row"><label>X</label><input type="range" id="b-px" min="-40" max="40" value="12"  step="0.5"><span class="val" id="b-px-v">12</span></div>
+      <div class="row"><label>Y</label><input type="range" id="b-py" min="-40" max="40" value="0"   step="0.5"><span class="val" id="b-py-v">0</span></div>
+      <div class="row"><label>Z</label><input type="range" id="b-pz" min="-40" max="40" value="0"   step="0.5"><span class="val" id="b-pz-v">0</span></div>
+      <div class="section-label">Rotation (°)</div>
+      <div class="row"><label>X</label><input type="range" id="b-rx" min="-180" max="180" value="0" step="1"><span class="val" id="b-rx-v">0°</span></div>
+      <div class="row"><label>Y</label><input type="range" id="b-ry" min="-180" max="180" value="0" step="1"><span class="val" id="b-ry-v">0°</span></div>
+      <div class="row"><label>Z</label><input type="range" id="b-rz" min="-180" max="180" value="0" step="1"><span class="val" id="b-rz-v">0°</span></div>
+      <button id="b-reset">Reset B</button>
+    </div>
+  </div>
+
+  <script>
+    const DEG = Math.PI / 180;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const stage = new NGL.Stage("viewport", { backgroundColor: "black" });
+
+      // Resize NGL when window resizes
+      window.addEventListener("resize", () => stage.handleResize());
+
+      // Load molecule A — cartoon, blue-ish scheme
+      const compA = await stage.loadFile("./1crn.pdb");
+      compA.addRepresentation("cartoon", { colorScheme: "uniform", colorValue: "#4488ff" });
+      compA.setPosition([-12, 0, 0]);
+
+      // Load molecule B — ball+stick, orange scheme
+      const compB = await stage.loadFile("./1crn.pdb");
+      compB.addRepresentation("ball+stick", { colorScheme: "uniform", colorValue: "#ff8833" });
+      compB.setPosition([12, 0, 0]);
+
+      stage.autoView();
+
+      // --- Generic slider wiring ---
+      function wire(prefix, comp, defaults) {
+        const ids = ["px", "py", "pz", "rx", "ry", "rz"];
+
+        function update() {
+          const px = +document.getElementById(`${prefix}-px`).value;
+          const py = +document.getElementById(`${prefix}-py`).value;
+          const pz = +document.getElementById(`${prefix}-pz`).value;
+          const rx = +document.getElementById(`${prefix}-rx`).value;
+          const ry = +document.getElementById(`${prefix}-ry`).value;
+          const rz = +document.getElementById(`${prefix}-rz`).value;
+
+          comp.setPosition([px, py, pz]);
+          comp.setRotation([rx * DEG, ry * DEG, rz * DEG]);
+          stage.viewer.requestRender();
+
+          // Update display values
+          document.getElementById(`${prefix}-px-v`).textContent = px;
+          document.getElementById(`${prefix}-py-v`).textContent = py;
+          document.getElementById(`${prefix}-pz-v`).textContent = pz;
+          document.getElementById(`${prefix}-rx-v`).textContent = rx + "°";
+          document.getElementById(`${prefix}-ry-v`).textContent = ry + "°";
+          document.getElementById(`${prefix}-rz-v`).textContent = rz + "°";
+        }
+
+        ids.forEach(id => {
+          document.getElementById(`${prefix}-${id}`).addEventListener("input", update);
+        });
+
+        document.getElementById(`${prefix}-reset`).addEventListener("click", () => {
+          document.getElementById(`${prefix}-px`).value = defaults.px;
+          document.getElementById(`${prefix}-py`).value = defaults.py;
+          document.getElementById(`${prefix}-pz`).value = defaults.pz;
+          document.getElementById(`${prefix}-rx`).value = 0;
+          document.getElementById(`${prefix}-ry`).value = 0;
+          document.getElementById(`${prefix}-rz`).value = 0;
+          update();
+        });
+      }
+
+      wire("a", compA, { px: -12, py: 0, pz: 0 });
+      wire("b", compB, { px:  12, py: 0, pz: 0 });
+    });
+  </script>
+</body>
+</html>
