@@ -155,15 +155,74 @@
       setStatus(`Showing selection: "${seleStr}"`, "#88ccff");
     });
 
+    // ── Custom PDB formatter ───────────────────────────────────────────────────
+    //
+    // NGL.PdbWriter (v2.0.0-dev.37) ignores a StructureView and walks the full
+    // parent structure.  We bypass it entirely and format the PDB ourselves by
+    // calling structureView.eachAtom(), which DOES respect the view filter.
+    //
+    // PDB fixed-column format (cols are 1-based):
+    //   1-6   record type  (ATOM / HETATM)
+    //   7-11  serial       right-justified integer
+    //   12    blank
+    //  13-16  atom name    special padding (see below)
+    //  17     altLoc
+    //  18-20  residue name left-justified, 3 chars
+    //  21     blank
+    //  22     chain ID
+    //  23-26  residue seq  right-justified integer
+    //  27     iCode
+    //  28-30  blanks
+    //  31-38  x            %8.3f
+    //  39-46  y            %8.3f
+    //  47-54  z            %8.3f
+    //  55-60  occupancy    %6.2f
+    //  61-66  B-factor     %6.2f
+    //  67-76  blanks
+    //  77-78  element      right-justified, 2 chars
+    //  79-80  charge       (blank)
+    //
+    function formatAtomLine(ap, serial) {
+      const record = ap.hetero ? 'HETATM' : 'ATOM  ';
+
+      // Atom name: 1-char element symbols get a leading space (col 13 blank);
+      // 2-char element symbols (FE, CA…) start in col 13.
+      let name = (ap.atomname || '').slice(0, 4);
+      if (name.length < 4) {
+        const el = (ap.element || '').toUpperCase();
+        name = (el.length === 1) ? (' ' + name).padEnd(4) : name.padEnd(4);
+      }
+
+      const altLoc  = ap.altloc   || ' ';
+      const resName = (ap.resname  || 'UNK').slice(0, 3).padEnd(3);
+      const chainId = (ap.chainname || 'A').slice(0, 1);
+      const resSeq  = String(ap.resno || 1).padStart(4).slice(-4);
+      const iCode   = ap.inscode  || ' ';
+
+      const f3 = v => v.toFixed(3).padStart(8);
+      const f2 = v => v.toFixed(2).padStart(6);
+
+      const x    = f3(ap.x);
+      const y    = f3(ap.y);
+      const z    = f3(ap.z);
+      const occ  = f2(ap.occupancy !== undefined ? ap.occupancy : 1.0);
+      const bfac = f2(ap.bfactor   !== undefined ? ap.bfactor  : 0.0);
+      const elem = (ap.element || '').toUpperCase().padStart(2).slice(0, 2);
+
+      return `${record}${String(serial).padStart(5)} ${name}${altLoc}${resName} ${chainId}${resSeq}${iCode}   ${x}${y}${z}${occ}${bfac}          ${elem}  `;
+    }
+
+    function structureViewToPdb(view) {
+      const lines = [];
+      let serial = 1;
+      view.eachAtom(ap => {
+        lines.push(formatAtomLine(ap, serial++));
+      });
+      lines.push('END');
+      return lines.join('\n') + '\n';
+    }
+
     // ── Export selection to PDB ────────────────────────────────────────────────
-    //
-    // KEY INSIGHT: removing representations does NOT change what atoms are stored
-    // in memory.  To write only a sub-set of atoms you must:
-    //   1.  Build an NGL.Selection from your selection string.
-    //   2.  Call structure.getView(selection)  → returns a StructureView that
-    //       contains ONLY the matching atoms (no copy, just a filtered proxy).
-    //   3.  Pass that view to NGL.PdbWriter – it will iterate only those atoms.
-    //
     document.getElementById("exportBtn").addEventListener("click", () => {
       if (!currentComp) { setStatus("Load a structure first.", "#ff6666"); return; }
 
@@ -171,10 +230,8 @@
       if (!seleStr) { setStatus("Enter a selection string.", "#ff6666"); return; }
 
       try {
-        // Step 1: create an NGL Selection object
+        // Get a filtered view — only the selected atoms
         const sele = new NGL.Selection(seleStr);
-
-        // Step 2: get a view of only the selected atoms
         const structureView = currentComp.structure.getView(sele);
 
         if (structureView.atomCount === 0) {
@@ -182,9 +239,17 @@
           return;
         }
 
-        // Step 3: write only those atoms to PDB format
-        const writer = new NGL.PdbWriter(structureView, { renumber: false });
-        writer.download("substructure.pdb");
+        // Build PDB text by iterating the view directly (bypasses NGL.PdbWriter bug)
+        const pdbText = structureViewToPdb(structureView);
+
+        // Trigger download
+        const blob = new Blob([pdbText], { type: 'text/plain' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = 'substructure.pdb';
+        a.click();
+        URL.revokeObjectURL(url);
 
         setStatus(
           `Exported ${structureView.atomCount} atoms → substructure.pdb`,
