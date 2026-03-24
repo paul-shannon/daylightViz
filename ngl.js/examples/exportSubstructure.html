@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NGL - Export Sub-structure to PDB</title>
+  <style>
+    body { margin: 0; background: #1a1a2e; font-family: monospace; }
+    #viewport { width: 100vw; height: 100vh; }
+    #controls {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.75);
+      color: #eee;
+      padding: 12px 16px;
+      border-radius: 6px;
+      z-index: 10;
+      min-width: 260px;
+    }
+    #controls h3 { margin: 0 0 8px; font-size: 14px; color: #88ccff; }
+    label { display: block; margin: 4px 0 2px; font-size: 12px; color: #aaa; }
+    input[type=text] {
+      width: 100%;
+      box-sizing: border-box;
+      background: #222;
+      color: #eee;
+      border: 1px solid #555;
+      padding: 4px 6px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 12px;
+    }
+    button {
+      margin-top: 8px;
+      width: 100%;
+      padding: 6px;
+      background: #2255aa;
+      color: #fff;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    button:hover { background: #3366cc; }
+    #status {
+      margin-top: 8px;
+      font-size: 11px;
+      color: #ffcc44;
+      min-height: 16px;
+    }
+    #atomCount {
+      margin-top: 6px;
+      font-size: 11px;
+      color: #88ff88;
+    }
+    input[type=file] { display: none; }
+    label.file-btn {
+      display: block;
+      text-align: center;
+      padding: 6px;
+      background: #335533;
+      color: #88ff88;
+      border: 1px solid #557755;
+      border-radius: 3px;
+      cursor: pointer;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+    label.file-btn:hover { background: #446644; }
+    hr { border-color: #444; margin: 10px 0; }
+  </style>
+  <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
+</head>
+<body>
+  <div id="viewport"></div>
+
+  <div id="controls">
+    <h3>Export Sub-structure to PDB</h3>
+
+    <label class="file-btn" for="fileInput">Load PDB / mmCIF file</label>
+    <input type="file" id="fileInput" accept=".pdb,.cif,.mmcif,.ent">
+
+    <hr>
+
+    <label>Selection (NGL syntax):</label>
+    <input type="text" id="seleInput" value=":A" placeholder="e.g.  :A  or  1-50:A  or  resname LIG">
+
+    <button id="showBtn">Show selection only</button>
+    <button id="exportBtn">Export selection to PDB</button>
+
+    <div id="status"></div>
+    <div id="atomCount"></div>
+  </div>
+
+  <script>
+    const stage = new NGL.Stage("viewport", { backgroundColor: "black" });
+    window.addEventListener("resize", () => stage.handleResize());
+
+    let currentComp = null;
+
+    function setStatus(msg, color) {
+      const el = document.getElementById("status");
+      el.style.color = color || "#ffcc44";
+      el.textContent = msg;
+    }
+
+    function setAtomCount(n) {
+      document.getElementById("atomCount").textContent =
+        n !== null ? `Selected atoms: ${n}` : "";
+    }
+
+    // ── Load file ──────────────────────────────────────────────────────────────
+    document.getElementById("fileInput").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      if (currentComp) {
+        stage.removeComponent(currentComp);
+        currentComp = null;
+      }
+      setAtomCount(null);
+      setStatus("Loading…");
+
+      const url = URL.createObjectURL(file);
+      try {
+        currentComp = await stage.loadFile(url, { ext: file.name.split(".").pop() });
+        URL.revokeObjectURL(url);
+        currentComp.addRepresentation("cartoon", { color: "chainname" });
+        currentComp.autoView();
+        const total = currentComp.structure.atomCount;
+        setStatus(`Loaded ${file.name}  (${total} atoms)`, "#88ff88");
+      } catch (err) {
+        URL.revokeObjectURL(url);
+        setStatus("Load failed: " + err.message, "#ff6666");
+      }
+    });
+
+    // ── Show selection only ────────────────────────────────────────────────────
+    document.getElementById("showBtn").addEventListener("click", () => {
+      if (!currentComp) { setStatus("Load a structure first.", "#ff6666"); return; }
+
+      const seleStr = document.getElementById("seleInput").value.trim();
+      if (!seleStr) { setStatus("Enter a selection string.", "#ff6666"); return; }
+
+      // Remove all existing representations
+      currentComp.removeAllRepresentations();
+
+      // Add one representation restricted to the selection
+      currentComp.addRepresentation("ball+stick", { sele: seleStr, color: "element" });
+      currentComp.autoView(seleStr);
+
+      // Count selected atoms for feedback
+      const sele = new NGL.Selection(seleStr);
+      const view = currentComp.structure.getView(sele);
+      setAtomCount(view.atomCount);
+      setStatus(`Showing selection: "${seleStr}"`, "#88ccff");
+    });
+
+    // ── Export selection to PDB ────────────────────────────────────────────────
+    //
+    // KEY INSIGHT: removing representations does NOT change what atoms are stored
+    // in memory.  To write only a sub-set of atoms you must:
+    //   1.  Build an NGL.Selection from your selection string.
+    //   2.  Call structure.getView(selection)  → returns a StructureView that
+    //       contains ONLY the matching atoms (no copy, just a filtered proxy).
+    //   3.  Pass that view to NGL.PdbWriter – it will iterate only those atoms.
+    //
+    document.getElementById("exportBtn").addEventListener("click", () => {
+      if (!currentComp) { setStatus("Load a structure first.", "#ff6666"); return; }
+
+      const seleStr = document.getElementById("seleInput").value.trim();
+      if (!seleStr) { setStatus("Enter a selection string.", "#ff6666"); return; }
+
+      try {
+        // Step 1: create an NGL Selection object
+        const sele = new NGL.Selection(seleStr);
+
+        // Step 2: get a view of only the selected atoms
+        const structureView = currentComp.structure.getView(sele);
+
+        if (structureView.atomCount === 0) {
+          setStatus(`Selection "${seleStr}" matched 0 atoms.`, "#ff6666");
+          return;
+        }
+
+        // Step 3: write only those atoms to PDB format
+        const writer = new NGL.PdbWriter(structureView, { renumber: false });
+        writer.download("substructure.pdb");
+
+        setStatus(
+          `Exported ${structureView.atomCount} atoms → substructure.pdb`,
+          "#88ff88"
+        );
+        setAtomCount(structureView.atomCount);
+
+      } catch (err) {
+        setStatus("Export failed: " + err.message, "#ff6666");
+        console.error(err);
+      }
+    });
+  </script>
+</body>
+</html>
