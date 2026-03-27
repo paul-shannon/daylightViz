@@ -20,7 +20,8 @@
       const stage = new NGL.Stage("viewport", { backgroundColor: "black" });
 
       // Load a molecule
-      const comp = await stage.loadFile("./1crn.pdb");
+      pdb = "http://127.0.0.1:5005/pdb/1crn.pdb"
+      const comp = await stage.loadFile(pdb)
       comp.addRepresentation("cartoon", { color: "chainname" });
       comp.autoView();
 
@@ -36,6 +37,15 @@
 
       // Trigger a re-render so the custom object appears
       stage.viewer.requestRender();
+
+      // Log canvas coordinates on click
+      const canvas = stage.viewer.renderer.domElement;
+      canvas.addEventListener('click', (event) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        console.log('Canvas coords:', x, y);
+      });
     });
   </script>
 </body>

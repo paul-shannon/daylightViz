@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NGL + THREE.js Demo</title>
+  <style>
+    body { margin: 0; background: #1a1a2e; }
+    #viewport { width: 100vw; height: 100vh; }
+  </style>
+
+  <!-- 1. Load NGL first (bundles THREE r128 internally) -->
+  <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
+
+  <!-- 2. Load THREE r128 separately — same version NGL uses, so objects are compatible -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+</head>
+<body>
+  <div id="viewport"></div>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const stage = new NGL.Stage("viewport", { backgroundColor: "black" });
+
+      // Load a molecule
+      const comp = await stage.loadFile("./1crn.pdb");
+      comp.addRepresentation("cartoon", { color: "chainname" });
+      comp.autoView();
+
+      // THREE.js is now available as the global `THREE` from the CDN script above.
+      // Add custom THREE objects directly into NGL's internal scene.
+      const geometry = new THREE.BoxGeometry(5, 5, 5);
+      const material = new THREE.MeshBasicMaterial({ color: 0xff4444, wireframe: true });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(10, 0, 0);
+
+      // NGL's scene is a standard THREE.Scene
+      stage.viewer.scene.add(mesh);
+
+      // Trigger a re-render so the custom object appears
+      stage.viewer.requestRender();
+    });
+  </script>
+</body>
+</html>

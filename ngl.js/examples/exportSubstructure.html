@@ -92,7 +92,7 @@
   </div>
 
   <script>
-    const stage = new NGL.Stage("viewport", { backgroundColor: "black" });
+    const stage = new NGL.Stage("viewport", { backgroundColor: "beige" });
     window.addEventListener("resize", () => stage.handleResize());
 
     let currentComp = null;
@@ -128,6 +128,7 @@
         currentComp.autoView();
         const total = currentComp.structure.atomCount;
         setStatus(`Loaded ${file.name}  (${total} atoms)`, "#88ff88");
+        window.x = currentComp;
       } catch (err) {
         URL.revokeObjectURL(url);
         setStatus("Load failed: " + err.message, "#ff6666");

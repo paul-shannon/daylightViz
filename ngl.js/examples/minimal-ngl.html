@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>min</title>
+    <style>
+        body { margin: 0; }
+        #viewport { width: 100vw; height: 100vh; }
+    </style>
+</head>
+<body>
+    <div id="viewport"></div>
+    <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
+    <script>
+        var PDB = "1crn.pdb"
+        //PDB = "cla+pho+pl9.pdb"
+        PDB = "cla+pho.pdb";
+        PDB = "pl9.pdb"
+        PDB = "cla-A-365.pdb"
+        PDB = "cla-with-tail.pdb"
+        PDB = "cla-no-tail.pdb"
+        
+        document.addEventListener("DOMContentLoaded", function () {
+            var stage = new NGL.Stage("viewport", {backgroundColor: "beige"});
+            stage.mouseControls.remove("clickPick-left");
+            window.stage = stage;
+            stage.loadFile("http://127.0.0.1:5005/pdb/" + PDB,
+                           {defaultRepresentation: true})
+                .then(function (component) {
+                     component.autoView();
+                     window.x = component;
+                });
+            window.addEventListener("resize", function () {
+                stage.handleResize();
+                }, false);
+            const canvas = stage.viewer.renderer.domElement;
+            canvas.addEventListener('click', function(event){
+               const rect = canvas.getBoundingClientRect();
+               //console.log("--- canvas click, rect:")
+               //console.log(rect)
+               const x = event.clientX - rect.left;
+               const y = event.clientY - rect.top;
+               //console.log('Canvas coords:', x, y);
+               });
+            stage.signals.clicked.add(function (pickingProxy) {
+              if (pickingProxy && pickingProxy.atom){
+                //console.log("--- pickingProxy");
+                //console.log(pickingProxy)
+                //console.log("Atom Clicked:", pickingProxy.atom.resname,
+                //            pickingProxy.atom.atomno);
+                pos = pickingProxy.position
+                window.pos = pos
+                console.log("clickPoss: " + Math.round(pos.x) +
+                            " " + Math.round(pos.y) + " " + Math.round(pos.z))
+                }
+               });
+            });
+    </script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
+</head>
+<body>
+  <div id="viewport" style="width:800px; height:600px;"></div>
+  <script>
+    // Access NGL's bundled THREE.js
+    const THREE = NGL.THREE;
+    window.THREE = THREE;
+
+    // Create NGL stage as usual
+    const stage = new NGL.Stage("viewport", {backgroundColor: "beige"});
+    stage.loadFile("./1crn.pdb").then(component => {
+      component.addRepresentation("cartoon");
+      component.autoView();
+    });
+
+    // Use THREE.js for custom objects, added to NGL's scene
+    //const geometry = new THREE.BoxGeometry(5, 5, 5);
+    //const material = new THREE.MeshBasicMaterial({ color: 0xff0000, wireframe: true });
+    //const mesh = new THREE.Mesh(geometry, material);
+    //stage.viewer.scene.add(mesh);  // inject into NGL's THREE scene
+  </script>
+</body>
+</html>

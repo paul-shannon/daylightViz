@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>NGL Move Sphere and Molecule Demo</title>
+  <style>
+    body { margin: 0; background: #1a1a2e; }
+    #viewport { width: 100vw; height: 90vh; }
+  </style>
+  <script src="https://code.jquery.com/jquery-3.6.3.min.js"></script>
+  <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
+</head>
+<body>
+  <div id="outerDiv">
+    <div id="buttonDiv" style="background-color: white">
+      <button id="hideButton"
+        style="height: 40px; font-size: 24px; background-color: lightray;"> Hide </button>
+    </div>
+    <div id="viewport"></div>
+  </div>
+  <script>
+    document.addEventListener("DOMContentLoaded", async () => {
+      const stage = new NGL.Stage("viewport", { backgroundColor: "beige" });
+      window.stage = stage;        
+      //const comp = await stage.loadFile("http://127.0.0.1:60050/1crn.pdb")
+      const pdb1 = "http://127.0.0.1:60050/1crn.pdb"
+      comp = await stage.loadFile(pdb1).then(function (component) {
+         component.addRepresentation("cartoon", {color: "residueIndex"})
+         //component.autoView()
+         return(component);
+         })
+    // Adjust the view to encompass this component (optional, can be done once at the end)
+     stage.autoView();// comp.autoView();
+     //});
+      window.comp = comp;  
+      //const comp2 = await stage.loadFile("http://127.0.0.1:60050/pl9.pdb")
+      //window.comp2 = comp2
+        // supports this from the console
+        // comp.addRepresentation("spacefill", {sele: ":A"})
+        // comp.addRepresentation("ball+stick", {sele: ":A"})
+        // comp.addRepresentation("cartoon", {sele: ":A"})
+        // comp.removeAllRepresentations()
+        // comp.addRepresentation("ball+stick", {sele: ":A and 34-40"})
+      //comp.addRepresentation("cartoon", { color: "residueIndex" });
+      //comp.autoView();
+      //comp2.addRepresentation("cartoon", { color: "residueIndex" });
+      //comp2.autoView();
+      function makeShape(spherePos) {
+        const shape = new NGL.Shape("myShape");
+        shape.addSphere(spherePos, [1, 0, 1], 2.0, "redSphere");
+        shape.addArrow([10, 0, 0], [18, 0, 0], [0, 1, 0], 0.5, "arrow");
+        shape.addCylinder([10, 5, 0], [10, 12, 0], [0, 0.5, 1], 0.4, "cylinder");
+        //shape.addMesh(
+        //  [10, -5, 0,  14, -5, 0,  12, -2, 0],  // vertices
+        //  [0, 1, 2],                            // faces
+        //  { color: [0.8, 0.8, 0.2] }
+        //    undefined,
+        //    undefined,
+        //    "pyramid"
+        // );
+        return shape;
+        }
+
+      // Initial sphere position
+      let pos = [-10, 0, 0];
+      let shapeComp = stage.addComponentFromObject(makeShape(pos));
+      shapeComp.addRepresentation("buffer");
+
+       // In NGL.js, shapeComp.addRepresentation("buffer") is used to
+       // render custom geometric shapes (such as spheres, cylinders,
+       //  lines, or points) that have been added to a Shape object and
+       // loaded into the stage as a component. 
+
+       // Purpose: It instructs NGL to create a BufferRepresentation for the
+       // shape component, which directly converts the shape's primitive
+       //  buffers into visual elements.
+
+       // Usage Context: Typically used after defining a Shape object,
+       // adding primitives to it (e.g., shape.addSphere,
+       // shape.addCylinder), and adding it to the stage with
+       // stage.addComponentFromObject(shape).
+
+      // Programmatically move the sphere across 60 frames
+      const steps = 60;
+      const startX = -10;
+      const endX = 10;
+      let frame = 0;
+
+      function animate() {
+        if (frame > steps) return;
+        const t = frame / steps;
+        const newX = startX + (endX - startX) * t;
+        const newY = Math.sin(t * Math.PI) * 5;  // arc upward
+        pos = [newX, newY, 0];
+        stage.removeComponent(shapeComp);
+        shapeComp = stage.addComponentFromObject(makeShape(pos));
+        shapeComp.addRepresentation("buffer");
+        stage.viewer.requestRender();
+        frame++;
+        setTimeout(animate, 50);  // ~20fps
+        }
+
+      function animateMolecule() {
+        let mFrame = 0;
+        const mSteps = 60;
+        function step() {
+          if (mFrame > mSteps) return;
+          const t = mFrame / mSteps;
+          const newX = (t - 0.5) * 30;          // slide left to right
+          const newY = Math.sin(t * Math.PI) * 8; // arc upward
+          comp.setPosition([newX, newY, 0]);
+          const angleX = mFrame * 3 * Math.PI/180;
+          comp.setRotation([angleX, 0, 0]);
+          stage.viewer.requestRender();
+          mFrame++;
+          setTimeout(step, 50);
+          }
+        step();
+        }
+
+      // Start animation after a short delay so the molecule loads visibly
+      setTimeout(animate, 1000);
+      setTimeout(animateMolecule, 1000 + 60 * 50 + 500); // start after sphere finishes
+    });
+  $("#hideButton").click(function() {
+      console.log("click");    
+      comp.addRepresentation("ball+stick", {sele: ":A and 34-40"})
+      });
+  </script>
+</body>
+</html>

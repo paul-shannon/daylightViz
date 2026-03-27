@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>ngl.js minimal</title>
+    <style>
+        body { margin: 0; }
+        #viewport { width: 100vw; height: 100vh; }
+    </style>
+</head>
+<body>
+    <div id="viewport"></div>
+    <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
+    <script>
+        var PDB = "1IZL.pdb";
+        PDB = "1S5L.pdb";
+        //PDB = "cla+pho+pl9.pdb"
+
+        document.addEventListener("DOMContentLoaded", function () {
+            const stage = new NGL.Stage("viewport", { backgroundColor: "beige" });
+            window.stage = stage;
+            stage.loadFile("http://127.0.0.1:60050/" + PDB,
+                           {defaultRepresentation: true})
+                .then(function (component) {
+                   const x =  stage.getComponentsByName("1S5L.pdb").list[0]
+                   x.removeAllRepresentations();
+                   //x.addRepresentation("cartoon", {sele: ":A",
+                   //                    colorScheme: "residueIndex"});
+                   x.addRepresentation('ball+stick', {sele: 'PHO and :A'})
+                   x.addRepresentation('ball+stick', {sele: 'CLA and 348 and :A'})
+                   x.addRepresentation('ball+stick', {sele: 'PL9 and :A'})
+                   component.autoView();
+                   });
+            window.addEventListener("resize", function () {
+                stage.handleResize();
+                }, false);
+            });
+        const canvas = stage.viewer.canvas;
+        canvas.addEventListener('click', function(event) {
+           const rect = canvas.getBoundingClientRect();
+           const x = event.clientX - rect.left;
+           const y = event.clientY - rect.top;
+           console.log("Manual canvas coordinates:", x, y);
+           });
+    </script>
+</body>
+</html>
+
+<!--
+save a selection
+
+x.removeAllRepresentations()
+x.addRepresentation('ball+stick', {sele: 'PL9 and :A'})
+const selection = new NGL.Selection("PL9 and :A");
+const subset = stage.compList[0].structure.getView(selection);
+const writer = new NGL.PdbWriter(subset);
+const pdbString = writer.getData();
+const blob = new Blob([pdbString], { type: 'text/plain' });
+const url = URL.createObjectURL(blob);
+const link = document.createElement('a');
+link.href = url;
+link.download = 'subset.pdb';
+link.click();
+
+-->
+

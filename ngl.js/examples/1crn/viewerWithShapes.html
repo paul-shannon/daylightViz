@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>1crn + shapes</title>
+  <style>
+    body { margin: 0; background: #1a1a2e; }
+    #viewport { width: 100vw; height: 100vh; }
+  </style>
+  <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
+</head>
+<body>
+  <div id="viewport"></div>
+  <script>
+    // Custom geometry in NGL is done via NGL.Shape — no raw THREE.js needed.
+    // Loading a second THREE.js from CDN (even the same version) causes a
+    // "getUniforms" crash because NGL's renderer was compiled against its own
+    // private bundled copy and the two copies have separate WebGL program registries.
+    //
+    // NGL.Shape primitives:  addSphere, addBox, addCylinder, addArrow, addMesh
+    // addMesh accepts Float32Arrays of vertices + normals, covering any shape
+    // you would otherwise build with THREE.BufferGeometry.
+
+    // ── helper: flat face normal from three vertices ────────────────────────
+    function faceNormal(a, b, c) {
+      const ab = [b[0]-a[0], b[1]-a[1], b[2]-a[2]];
+      const ac = [c[0]-a[0], c[1]-a[1], c[2]-a[2]];
+      const n = [
+        ab[1]*ac[2] - ab[2]*ac[1],
+        ab[2]*ac[0] - ab[0]*ac[2],
+        ab[0]*ac[1] - ab[1]*ac[0]
+      ];
+      const len = Math.sqrt(n[0]*n[0] + n[1]*n[1] + n[2]*n[2]);
+      console.log("returning from faceNormal")
+      return [n[0]/len, n[1]/len, n[2]/len];
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const stage = new NGL.Stage("viewport", { backgroundColor: "beige" });
+      window.stage = stage;
+      // ── molecule ──────────────────────────────────────────────────────────
+      //const comp = await stage.loadFile("1crn.pdb");
+      const comp = await stage.loadFile("http://127.0.0.1:60050/1crn.pdb")
+      //const colorScheme = "chainname";
+      const colorScheme = "residueIndex";
+      comp.addRepresentation("cartoon", {color: colorScheme});
+
+      comp.autoView();
+
+      // ── NGL.Shape primitives ──────────────────────────────────────────────
+      const shape = new NGL.Shape("annotations");
+      console.log(47)
+      // addSphere( center[x,y,z], color[r,g,b 0-1], radius, label )
+      shape.addSphere([10, 0, 0], [1, 0.2, 0.2], 2, "red sphere");
+      console.log(48)
+
+      // addBox( center, color, size )
+      //shape.addBox([0, 10, 0], [0.2, 1, 0.2], 3);
+      console.log(49)
+
+
+      // addCylinder( start, end, color, radius )
+      const cylinder = shape.addCylinder([-5, -5, 0], [5, 5, 0], [0.2, 0.6, 1], 0.5);
+      window.cylinder = cylinder;
+      stage.addComponentFromObject(cylinder);
+
+      // addArrow( start, end, color, radius )
+      shape.addArrow([0, 0, -8], [0, 0, 8], [1, 1, 0], 0.4);
+
+      // ── addMesh: arbitrary triangulated geometry ──────────────────────────
+      // Build a pyramid — the same kind of shape you'd make with
+      // THREE.BufferGeometry + setAttribute('position', ...) + setAttribute('normal', ...)
+      //
+      // Define the 5 corners
+      const apex = [15, 8,  0];
+      const b0   = [10, 0, -5];
+      const b1   = [20, 0, -5];
+      const b2   = [20, 0,  5];
+      const b3   = [10, 0,  5];
+
+      // Each face is one triangle [v0, v1, v2]; winding order determines the normal direction
+      const faces = [
+        [apex, b1, b0],   // front
+        [apex, b2, b1],   // right
+        [apex, b3, b2],   // back
+        [apex, b0, b3],   // left
+        [b0,   b1, b2],   // base, first triangle
+        [b0,   b2, b3],   // base, second triangle
+      ];
+
+        console.log("about to construct verts and norms")
+      const verts = [];
+      const norms = [];
+      for (const [a, b, c] of faces) {
+        const n = faceNormal(a, b, c);
+        verts.push(...a, ...b, ...c);
+        norms.push(...n, ...n, ...n);   // flat shading: same normal for all 3 verts
+      }
+
+      // addMesh( vertices Float32Array, normals Float32Array, colors, indices, name )
+      shape.addMesh(
+        new Float32Array(verts),
+        new Float32Array(norms),
+        undefined,    // per-vertex colors (undefined = use shape default)
+        undefined,    // indices (undefined = non-indexed)
+        "pyramid"
+      );
+
+      // ── add to stage ──────────────────────────────────────────────────────
+      const shapeComp = stage.addComponentFromObject(shape);
+      shapeComp.addRepresentation("buffer");
+    });
+  </script>
+</body>
+</html>

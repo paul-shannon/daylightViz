@@ -1,0 +1,14 @@
+HEADER    MINIMAL EXAMPLE                   
+COMPND    TINY PROTEIN
+ATOM      1  N   ALA A   1      27.382  39.967  34.223  1.00 10.00           N
+ATOM      2  CA  ALA A   1      27.810  38.693  33.637  1.00 10.00           C
+ATOM      3  C   ALA A   1      26.626  37.844  33.252  1.00 10.00           C
+ATOM      4  O   ALA A   1      25.553  38.366  33.006  1.00 10.00           O
+ATOM      5  CB  ALA A   1      28.731  38.975  32.452  1.00 10.00           C
+ATOM      6  N   ALA A   2      26.810  36.522  33.200  1.00 10.00           N
+ATOM      7  CA  ALA A   2      25.752  35.614  32.841  1.00 10.00           C
+ATOM      8  C   ALA A   2      26.189  34.180  33.112  1.00 10.00           C
+ATOM      9  O   ALA A   2      27.372  33.870  33.001  1.00 10.00           O
+ATOM     10  CB  ALA A   2      25.365  35.771  31.373  1.00 10.00           C
+TER      11      ALA A   2
+END

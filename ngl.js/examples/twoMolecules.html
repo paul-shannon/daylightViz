@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>NGL - Two Independent Molecules</title>
+  <title>2</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #111; font-family: monospace; color: #ccc; display: flex; height: 100vh; }
@@ -119,27 +119,46 @@
   </div>
 
   <script>
+    const server = "http://127.0.0.1:5005/pdb/"
+    //var pdbA = "cla.pdb"
+    pdbA = "1crn.pdb"
+    //var pdbB = "pho.pdb"
+    pdbB = "1crn.pdb"
     const DEG = Math.PI / 180;
 
     document.addEventListener("DOMContentLoaded", async () => {
       const stage = new NGL.Stage("viewport", { backgroundColor: "black" });
-
-      // Resize NGL when window resizes
+      stage.mouseControls.remove("clickPick-left");
       window.addEventListener("resize", () => stage.handleResize());
-
-      // Load molecule A — cartoon, blue-ish scheme
-      const compA = await stage.loadFile("./1crn.pdb");
+      const compA = await stage.loadFile(server + pdbA);
       compA.addRepresentation("cartoon", { colorScheme: "uniform", colorValue: "#4488ff" });
       compA.setPosition([-12, 0, 0]);
-
-      // Load molecule B — ball+stick, orange scheme
-      const compB = await stage.loadFile("./1crn.pdb");
+      const compB = await stage.loadFile(server + pdbB)
       compB.addRepresentation("ball+stick", { colorScheme: "uniform", colorValue: "#ff8833" });
       compB.setPosition([12, 0, 0]);
-
+      window.A = compA;
+      window.B = compB;
       stage.autoView();
 
-      // --- Generic slider wiring ---
+      const canvas = stage.viewer.renderer.domElement;
+      canvas.addEventListener('click', function(event){
+         const rect = canvas.getBoundingClientRect();
+         //console.log("--- canvas click, rect:")
+         //console.log(rect)
+         const x = event.clientX - rect.left;
+         const y = event.clientY - rect.top;
+         console.log('Canvas coords:', x, y);
+         }); // click
+      stage.signals.clicked.add(function (pickingProxy) {
+        if (pickingProxy && pickingProxy.atom){
+          //console.log("--- pickingProxy");
+          //console.log(pickingProxy)
+          //console.log("Atom Clicked:", pickingProxy.atom.resname,
+          //            pickingProxy.atom.atomno);
+          console.log("Coordinates:", pickingProxy.position);
+          }
+         }); // add
+
       function wire(prefix, comp, defaults) {
         const ids = ["px", "py", "pz", "rx", "ry", "rz"];
 
