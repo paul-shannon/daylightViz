@@ -19,6 +19,8 @@ natom(x, x$atoms$resname)    # all the amino acids, and:
 
 subset(x, resname=="MN")$atoms
 subset(x, resname=="CLA" & chainid=="A" & elename=="MG")$atoms
+subset(x, resid==1)$atoms
+
 centres(x)
 atoms(x)
 subset(x, resname=="MN")$atoms
