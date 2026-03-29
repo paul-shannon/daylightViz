@@ -188,6 +188,23 @@
       scene.add(mesh);
     });
 
+    // ── Click handler — raycast to find the nearest Text mesh ───────────────
+    const raycaster = new THREE.Raycaster();
+    const pointer   = new THREE.Vector2();
+
+    renderer.domElement.addEventListener('click', (e) => {
+      // Convert pixel coords to NDC [-1, 1]
+      const rect = renderer.domElement.getBoundingClientRect();
+      pointer.x =  ((e.clientX - rect.left)  / rect.width)  * 2 - 1;
+      pointer.y = -((e.clientY - rect.top)   / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(scene.children, false);
+      if (hits.length > 0) {
+        console.log(hits[0].object.text);
+      }
+    });
+
     // ── Subtle depth-fog to reinforce the 3D sphere shape ────────────────────
     scene.fog = new THREE.FogExp2(0x0d1117, 0.0018);
 
