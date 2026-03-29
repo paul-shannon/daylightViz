@@ -193,14 +193,42 @@
       scene.add(mesh);
     });
 
-    // ── Click → log word to console ──────────────────────────────────────────
-    const raycaster = new THREE.Raycaster();
-    const pointer   = new THREE.Vector2();
+    // ── Hover highlight + click handler ─────────────────────────────────────
+    const raycaster  = new THREE.Raycaster();
+    const pointer    = new THREE.Vector2();
+    let   hoveredMesh = null;
 
-    renderer.domElement.addEventListener('click', e => {
+    function ndcFromEvent(e) {
       const rect = renderer.domElement.getBoundingClientRect();
       pointer.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
       pointer.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
+    }
+
+    renderer.domElement.addEventListener('mousemove', e => {
+      ndcFromEvent(e);
+      raycaster.setFromCamera(pointer, camera);
+      const hits = raycaster.intersectObjects(scene.children, false);
+      const hit  = hits.length > 0 ? hits[0].object : null;
+
+      if (hit !== hoveredMesh) {
+        if (hoveredMesh) {
+          hoveredMesh.color = hoveredMesh.userData.origColor;
+          hoveredMesh.scale.setScalar(1);
+          hoveredMesh.sync();
+        }
+        hoveredMesh = hit;
+        if (hoveredMesh) {
+          hoveredMesh.userData.origColor = hoveredMesh.color;
+          hoveredMesh.color = '#ffffff';
+          hoveredMesh.scale.setScalar(1.15);
+          hoveredMesh.sync();
+        }
+        renderer.domElement.style.cursor = hoveredMesh ? 'pointer' : 'default';
+      }
+    });
+
+    renderer.domElement.addEventListener('click', e => {
+      ndcFromEvent(e);
       raycaster.setFromCamera(pointer, camera);
       const hits = raycaster.intersectObjects(scene.children, false);
       if (hits.length > 0) console.log(hits[0].object.text);
