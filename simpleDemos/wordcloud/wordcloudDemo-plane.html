@@ -108,21 +108,28 @@
     // ── Collision-aware layout ────────────────────────────────────────────────
     // For each word (largest first), spiral outward from (0,0) and place at
     // the first position whose AABB does not overlap any already-placed word.
+
+    // Count visible glyphs, not code points — combining diacritics (ƛ̓, q̓ …)
+    // are multiple code points but render as one character width.
+    const segmenter = new Intl.Segmenter();
+    function glyphCount(str) {
+      return [...segmenter.segment(str)].length;
+    }
+
     function layout(words) {
-      const PADDING     = 1.5;   // gap between words
-      const SPIRAL_A    = 0.7;   // Archimedean r = a * θ  (controls spread)
-      const THETA_STEP  = 0.25;  // angular increment per candidate position
-      const MAX_THETA   = 1800;  // safety limit (~286 full rotations)
-      // Approximate character width for Noto Sans at 1px fontSize
-      const CHAR_W      = 0.58;
+      const PADDING     = 8;     // gap between word edges (Three.js units)
+      const SPIRAL_A    = 3.0;   // Archimedean r = a * θ  (controls spread)
+      const THETA_STEP  = 0.1;   // angular increment per candidate position
+      const MAX_THETA   = 3000;  // safety limit
+      const CHAR_W      = 0.85;  // estimated glyph width ratio for Noto Sans
 
       const placed = [];
 
       for (const { word, freq } of words) {
         const size = freqToSize(freq);
         // Estimated half-extents of this word's bounding box
-        const hw = (size * word.length * CHAR_W) / 2 + PADDING;
-        const hh = (size * 1.25)                 / 2 + PADDING;
+        const hw = (size * glyphCount(word) * CHAR_W) / 2 + PADDING;
+        const hh = (size * 1.25)                       / 2 + PADDING;
 
         let pos = { x: 0, y: 0 };   // default: center (first word)
 
@@ -157,7 +164,7 @@
     const camera = new THREE.PerspectiveCamera(
       50, window.innerWidth / window.innerHeight, 0.1, 2000
     );
-    camera.position.set(0, 0, 130);
+    camera.position.set(0, 0, 220);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
