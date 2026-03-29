@@ -174,9 +174,9 @@
       mesh.color    = freqToColor(freq);
       mesh.anchorX  = 'center';
       mesh.anchorY  = 'middle';
-      // Noto Sans Latin Extended covers IPA Extensions (ə ɬ ʔ), Latin Ext-A/B
-      // (č š ƛ), Spacing Modifiers (ʷ), and Combining Diacritical Marks (̓ ̌)
-      mesh.font = 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans@5/files/noto-sans-latin-ext-400-normal.woff2';
+      // Full NotoSans-Regular TTF (not a subset) — covers IPA Extensions,
+      // Latin Ext-A/B, Spacing Modifiers, and Combining Diacritical Marks
+      mesh.font = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts/hinted/ttf/NotoSans/NotoSans-Regular.ttf';
 
       mesh.position.copy(positions[i]);
 
