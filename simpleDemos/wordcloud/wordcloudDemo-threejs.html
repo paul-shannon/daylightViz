@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>3D Word Cloud — Lushootseed (Three.js + troika)</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0d1117; overflow: hidden; }
+    canvas { display: block; }
+    #title {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(201, 209, 217, 0.55);
+      font: 400 13px/1 'Segoe UI', Arial, sans-serif;
+      letter-spacing: 0.1em;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    #hint {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(201, 209, 217, 0.3);
+      font: 12px/1 'Segoe UI', Arial, sans-serif;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+  </style>
+
+  <!-- Import map: all modules share the same Three.js instance -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="title">Lushootseed Word Frequencies</div>
+  <div id="hint">drag to orbit &nbsp;·&nbsp; scroll to zoom &nbsp;·&nbsp; auto-rotating</div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { Text } from 'https://cdn.jsdelivr.net/npm/troika-three-text@0.47.2/dist/troika-three-text.esm.js';
+
+    // ── Word frequency data ──────────────────────────────────────────────────
+    const words = [
+      { word: "•al",           freq: 1 },
+      { word: "•ul̓gʷədxʷ",    freq: 1 },
+      { word: "c̓agʷa",        freq: 1 },
+      { word: "čal(a)",        freq: 1 },
+      { word: "cut",           freq: 1 },
+      { word: "əlgʷəʔ",        freq: 1 },
+      { word: "had",           freq: 1 },
+      { word: "hagʷ",          freq: 1 },
+      { word: "hay",           freq: 1 },
+      { word: "ič",            freq: 1 },
+      { word: "ləgʷəb",        freq: 1 },
+      { word: "ɬixʷ",          freq: 1 },
+      { word: "ƛ̓ub",           freq: 1 },
+      { word: "q̓xʷ",           freq: 1 },
+      { word: "q̓xʷul̓gʷədxʷ",  freq: 1 },
+      { word: "saliʔ",         freq: 1 },
+      { word: "siʔ",           freq: 1 },
+      { word: "swatixʷtəd",    freq: 1 },
+      { word: "t̓əd",           freq: 1 },
+      { word: "təlawil",       freq: 1 },
+      { word: "xʷəxʷaʔxʷəʔ",  freq: 1 },
+      { word: "x̌ʷul̓",         freq: 1 },
+      { word: "ʔa",            freq: 1 },
+      { word: "ʔacəc",         freq: 1 },
+      { word: "ʔaciɬtalbixʷ",  freq: 1 },
+      { word: "ʔaʔ",           freq: 1 },
+      { word: "ʔuluɬ",         freq: 1 },
+      { word: "bəsad",         freq: 2 },
+      { word: "bəščəb",        freq: 2 },
+      { word: "buus",          freq: 2 },
+      { word: "čal",           freq: 2 },
+      { word: "cəb",           freq: 2 },
+      { word: "č̓it",           freq: 2 },
+      { word: "gʷaʔxʷ",        freq: 2 },
+      { word: "kʷəd",          freq: 2 },
+      { word: "qaw̓qs",         freq: 2 },
+      { word: "xʷəʔaʔxʷəʔ",   freq: 2 },
+      { word: "haʔkʷ",         freq: 3 },
+      { word: "x̌ək̓ʷ",          freq: 3 },
+      { word: "ʔal",           freq: 3 },
+      { word: "ʔux̌ʷ",          freq: 3 },
+      { word: "•abac",         freq: 4 },
+      { word: "saxʷəb",        freq: 4 },
+      { word: "huyu",          freq: 5 },
+      { word: "•gʷiɬ",         freq: 6 },
+      { word: "ƛ̓əlayʔ",        freq: 6 },
+      { word: "ləx̌",           freq: 8 },
+    ];
+
+    // ── Scene setup ──────────────────────────────────────────────────────────
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0d1117);
+
+    const camera = new THREE.PerspectiveCamera(
+      55, window.innerWidth / window.innerHeight, 0.1, 2000
+    );
+    camera.position.set(0, 0, 320);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // ── OrbitControls ────────────────────────────────────────────────────────
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping  = true;
+    controls.dampingFactor  = 0.06;
+    controls.autoRotate     = true;
+    controls.autoRotateSpeed = 0.8;
+    controls.minDistance    = 80;
+    controls.maxDistance    = 600;
+
+    // ── Fibonacci sphere point distribution ──────────────────────────────────
+    const RADIUS = 110;
+
+    function fibonacciSphere(n, r) {
+      const phi = (1 + Math.sqrt(5)) / 2;
+      return Array.from({ length: n }, (_, i) => {
+        const theta = Math.acos(1 - 2 * (i + 0.5) / n);
+        const angle = 2 * Math.PI * i / phi;
+        return new THREE.Vector3(
+          r * Math.sin(theta) * Math.cos(angle),
+          r * Math.sin(theta) * Math.sin(angle),
+          r * Math.cos(theta)
+        );
+      });
+    }
+
+    // ── Frequency → visual mappings ──────────────────────────────────────────
+    const freqs  = words.map(w => w.freq);
+    const minF   = Math.min(...freqs);
+    const maxF   = Math.max(...freqs);
+
+    function freqToSize(f) {
+      // sqrt scale keeps low-frequency words legible
+      const t = (Math.sqrt(f) - Math.sqrt(minF)) /
+                (Math.sqrt(maxF) - Math.sqrt(minF) || 1);
+      return 3.5 + t * 16;          // 3.5 → 19.5 Three.js units
+    }
+
+    function freqToColor(f) {
+      const t = (f - minF) / (maxF - minF || 1);
+      // cool blue-cyan (low) → warm amber (high)
+      const h = 0.58 - t * 0.38;    // 0.58 (blue) down to 0.20 (yellow-amber)
+      const s = 0.75;
+      const l = 0.52 + t * 0.18;
+      return '#' + new THREE.Color().setHSL(h, s, l).getHexString();
+    }
+
+    // ── Build word meshes on sphere ──────────────────────────────────────────
+    const positions = fibonacciSphere(words.length, RADIUS);
+    const outward   = new THREE.Vector3();
+
+    words.forEach(({ word, freq }, i) => {
+      const mesh = new Text();
+      mesh.text     = word;
+      mesh.fontSize = freqToSize(freq);
+      mesh.color    = freqToColor(freq);
+      mesh.anchorX  = 'center';
+      mesh.anchorY  = 'middle';
+      // troika auto-fetches Noto fallbacks for any glyph not in default font
+      // — no explicit font URL needed for IPA / Latin Extended coverage
+
+      mesh.position.copy(positions[i]);
+
+      // Face outward from sphere center so the text is readable from outside
+      outward.copy(positions[i]).multiplyScalar(2);
+      mesh.lookAt(outward);
+
+      mesh.sync();
+      scene.add(mesh);
+    });
+
+    // ── Subtle depth-fog to reinforce the 3D sphere shape ────────────────────
+    scene.fog = new THREE.FogExp2(0x0d1117, 0.0018);
+
+    // ── Animation loop ───────────────────────────────────────────────────────
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    // ── Resize handler ───────────────────────────────────────────────────────
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
