@@ -174,8 +174,9 @@
       mesh.color    = freqToColor(freq);
       mesh.anchorX  = 'center';
       mesh.anchorY  = 'middle';
-      // troika auto-fetches Noto fallbacks for any glyph not in default font
-      // — no explicit font URL needed for IPA / Latin Extended coverage
+      // Noto Sans Latin Extended covers IPA Extensions (ə ɬ ʔ), Latin Ext-A/B
+      // (č š ƛ), Spacing Modifiers (ʷ), and Combining Diacritical Marks (̓ ̌)
+      mesh.font = 'https://cdn.jsdelivr.net/npm/@fontsource/noto-sans@5/files/noto-sans-latin-ext-400-normal.woff2';
 
       mesh.position.copy(positions[i]);
 
