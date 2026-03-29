@@ -8,23 +8,18 @@
     body { background: #0d1117; overflow: hidden; }
     canvas { display: block; }
     #title {
-      position: fixed;
-      top: 18px; left: 50%;
+      position: fixed; top: 18px; left: 50%;
       transform: translateX(-50%);
       color: rgba(201,209,217,0.5);
       font: 400 13px/1 'Segoe UI', Arial, sans-serif;
-      letter-spacing: 0.1em;
-      pointer-events: none;
-      white-space: nowrap;
+      letter-spacing: 0.1em; pointer-events: none; white-space: nowrap;
     }
     #hint {
-      position: fixed;
-      bottom: 16px; left: 50%;
+      position: fixed; bottom: 16px; left: 50%;
       transform: translateX(-50%);
       color: rgba(201,209,217,0.25);
       font: 12px/1 'Segoe UI', Arial, sans-serif;
-      pointer-events: none;
-      white-space: nowrap;
+      pointer-events: none; white-space: nowrap;
     }
   </style>
   <script type="importmap">
@@ -45,7 +40,7 @@
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { Text } from 'https://esm.sh/troika-three-text@0.47.2?deps=three@0.160.0';
 
-    // ── Data (sorted highest → lowest for center-outward placement) ──────────
+    // ── Data — sorted highest → lowest so the largest word lands at center ───
     const words = [
       { word: "ləx̌",           freq: 8 },
       { word: "•gʷiɬ",         freq: 6 },
@@ -104,40 +99,65 @@
     function tFreq(f) {
       return (Math.sqrt(f) - Math.sqrt(minF)) / (Math.sqrt(maxF) - Math.sqrt(minF) || 1);
     }
-    function freqToSize(f)  { return 3 + tFreq(f) * 18; }
+    function freqToSize(f)  { return 3 + tFreq(f) * 14; }
     function freqToColor(f) {
       const h = 0.58 - tFreq(f) * 0.38;
       return '#' + new THREE.Color().setHSL(h, 0.75, 0.52 + tFreq(f) * 0.18).getHexString();
     }
 
-    // ── Archimedean spiral layout ────────────────────────────────────────────
-    // Words are pre-sorted by freq desc; each word steps along the spiral by
-    // an amount proportional to its font size, so larger words claim more space.
-    function spiralPositions(words) {
-      const SPREAD = 2.8;   // radial spacing constant — increase to open up
-      const positions = [];
-      let angle  = 0;
-      let radius = 0;
+    // ── Collision-aware layout ────────────────────────────────────────────────
+    // For each word (largest first), spiral outward from (0,0) and place at
+    // the first position whose AABB does not overlap any already-placed word.
+    function layout(words) {
+      const PADDING     = 1.5;   // gap between words
+      const SPIRAL_A    = 0.7;   // Archimedean r = a * θ  (controls spread)
+      const THETA_STEP  = 0.25;  // angular increment per candidate position
+      const MAX_THETA   = 1800;  // safety limit (~286 full rotations)
+      // Approximate character width for Noto Sans at 1px fontSize
+      const CHAR_W      = 0.58;
 
-      for (const { freq } of words) {
+      const placed = [];
+
+      for (const { word, freq } of words) {
         const size = freqToSize(freq);
-        positions.push({ x: radius * Math.cos(angle), y: radius * Math.sin(angle) });
-        // advance along spiral by an arc proportional to the word's size
-        const step = (size * SPREAD) / Math.max(radius, 1);
-        angle  += step;
-        radius += size * 0.08;
+        // Estimated half-extents of this word's bounding box
+        const hw = (size * word.length * CHAR_W) / 2 + PADDING;
+        const hh = (size * 1.25)                 / 2 + PADDING;
+
+        let pos = { x: 0, y: 0 };   // default: center (first word)
+
+        if (placed.length > 0) {
+          let theta = 0;
+          let found = false;
+          while (!found && theta < MAX_THETA) {
+            const r = SPIRAL_A * theta;
+            const cx = r * Math.cos(theta);
+            const cy = r * Math.sin(theta);
+
+            const overlaps = placed.some(p =>
+              Math.abs(cx - p.x) < hw + p.hw &&
+              Math.abs(cy - p.y) < hh + p.hh
+            );
+
+            if (!overlaps) { pos = { x: cx, y: cy }; found = true; }
+            theta += THETA_STEP;
+          }
+        }
+
+        placed.push({ x: pos.x, y: pos.y, hw, hh });
       }
-      return positions;
+
+      return placed;
     }
 
-    // ── Scene ────────────────────────────────────────────────────────────────
-    const scene    = new THREE.Scene();
+    // ── Scene ─────────────────────────────────────────────────────────────────
+    const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0d1117);
 
     const camera = new THREE.PerspectiveCamera(
       50, window.innerWidth / window.innerHeight, 0.1, 2000
     );
-    camera.position.set(0, 0, 120);
+    camera.position.set(0, 0, 130);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -145,25 +165,23 @@
     document.body.appendChild(renderer.domElement);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping  = true;
-    controls.dampingFactor  = 0.06;
-    controls.minDistance    = 20;
-    controls.maxDistance    = 400;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance   = 20;
+    controls.maxDistance   = 500;
 
-    // ── Place words on the XY plane (z = 0) ─────────────────────────────────
-    const positions = spiralPositions(words);
+    // ── Place Text meshes at computed positions (z = 0) ──────────────────────
+    const positions = layout(words);
 
     words.forEach(({ word, freq }, i) => {
-      const mesh   = new Text();
-      mesh.text    = word;
+      const mesh    = new Text();
+      mesh.text     = word;
       mesh.fontSize = freqToSize(freq);
-      mesh.color   = freqToColor(freq);
-      mesh.anchorX = 'center';
-      mesh.anchorY = 'middle';
-      mesh.font    = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts/hinted/ttf/NotoSans/NotoSans-Regular.ttf';
-
+      mesh.color    = freqToColor(freq);
+      mesh.anchorX  = 'center';
+      mesh.anchorY  = 'middle';
+      mesh.font     = 'https://cdn.jsdelivr.net/gh/googlefonts/noto-fonts/hinted/ttf/NotoSans/NotoSans-Regular.ttf';
       mesh.position.set(positions[i].x, positions[i].y, 0);
-      // all words face +Z — toward the camera in default view
       mesh.sync();
       scene.add(mesh);
     });
@@ -172,7 +190,7 @@
     const raycaster = new THREE.Raycaster();
     const pointer   = new THREE.Vector2();
 
-    renderer.domElement.addEventListener('click', (e) => {
+    renderer.domElement.addEventListener('click', e => {
       const rect = renderer.domElement.getBoundingClientRect();
       pointer.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
       pointer.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
