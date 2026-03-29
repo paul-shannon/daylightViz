@@ -30,12 +30,13 @@
     }
   </style>
 
-  <!-- Import map: all modules share the same Three.js instance -->
+  <!-- esm.sh rewrites all bare specifiers (including troika's transitive deps)
+       to absolute URLs, so no importmap is needed -->
   <script type="importmap">
   {
     "imports": {
-      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      "three": "https://esm.sh/three@0.160.0",
+      "three/addons/": "https://esm.sh/three@0.160.0/examples/jsm/"
     }
   }
   </script>
@@ -47,7 +48,9 @@
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-    import { Text } from 'https://cdn.jsdelivr.net/npm/troika-three-text@0.47.2/dist/troika-three-text.esm.js';
+    // esm.sh resolves troika's internal bare imports (troika-worker-utils, etc.)
+    // and pins them to the same three version via the ?deps query param
+    import { Text } from 'https://esm.sh/troika-three-text@0.47.2?deps=three@0.160.0';
 
     // ── Word frequency data ──────────────────────────────────────────────────
     const words = [
