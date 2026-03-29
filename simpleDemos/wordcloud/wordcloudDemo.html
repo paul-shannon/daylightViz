@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>3D Word Cloud — Lushootseed</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0d1117;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      font-family: 'Noto Sans', 'Segoe UI', Arial, sans-serif;
+    }
+    h1 {
+      color: #c9d1d9;
+      font-size: 1.1rem;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+      opacity: 0.7;
+    }
+    #tagcloud-wrap {
+      position: relative;
+    }
+    canvas#tagcloud {
+      display: block;
+      border-radius: 8px;
+    }
+    /* The tag list is hidden — TagCanvas reads it but we don't show it */
+    #tags {
+      display: none;
+    }
+  </style>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/tagcanvas@3.0.4/tagcanvas.min.js"></script>
+</head>
+<body>
+  <h1>Lushootseed Word Frequencies</h1>
+
+  <div id="tagcloud-wrap">
+    <canvas id="tagcloud" width="800" height="600"></canvas>
+    <div id="tags">
+      <ul id="taglist">
+        <!-- populated by JS below -->
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // ── Word frequency data ──────────────────────────────────────────────────
+    const words = [
+      { word: "•al",           freq: 1 },
+      { word: "•ul̓gʷədxʷ",    freq: 1 },
+      { word: "c̓agʷa",        freq: 1 },
+      { word: "čal(a)",        freq: 1 },
+      { word: "cut",           freq: 1 },
+      { word: "əlgʷəʔ",        freq: 1 },
+      { word: "had",           freq: 1 },
+      { word: "hagʷ",          freq: 1 },
+      { word: "hay",           freq: 1 },
+      { word: "ič",            freq: 1 },
+      { word: "ləgʷəb",        freq: 1 },
+      { word: "ɬixʷ",          freq: 1 },
+      { word: "ƛ̓ub",           freq: 1 },
+      { word: "q̓xʷ",           freq: 1 },
+      { word: "q̓xʷul̓gʷədxʷ",  freq: 1 },
+      { word: "saliʔ",         freq: 1 },
+      { word: "siʔ",           freq: 1 },
+      { word: "swatixʷtəd",    freq: 1 },
+      { word: "t̓əd",           freq: 1 },
+      { word: "təlawil",       freq: 1 },
+      { word: "xʷəxʷaʔxʷəʔ",  freq: 1 },
+      { word: "x̌ʷul̓",         freq: 1 },
+      { word: "ʔa",            freq: 1 },
+      { word: "ʔacəc",         freq: 1 },
+      { word: "ʔaciɬtalbixʷ",  freq: 1 },
+      { word: "ʔaʔ",           freq: 1 },
+      { word: "ʔuluɬ",         freq: 1 },
+      { word: "bəsad",         freq: 2 },
+      { word: "bəščəb",        freq: 2 },
+      { word: "buus",          freq: 2 },
+      { word: "čal",           freq: 2 },
+      { word: "cəb",           freq: 2 },
+      { word: "č̓it",           freq: 2 },
+      { word: "gʷaʔxʷ",        freq: 2 },
+      { word: "kʷəd",          freq: 2 },
+      { word: "qaw̓qs",         freq: 2 },
+      { word: "xʷəʔaʔxʷəʔ",   freq: 2 },
+      { word: "haʔkʷ",         freq: 3 },
+      { word: "x̌ək̓ʷ",          freq: 3 },
+      { word: "ʔal",           freq: 3 },
+      { word: "ʔux̌ʷ",          freq: 3 },
+      { word: "•abac",         freq: 4 },
+      { word: "saxʷəb",        freq: 4 },
+      { word: "huyu",          freq: 5 },
+      { word: "•gʷiɬ",         freq: 6 },
+      { word: "ƛ̓əlayʔ",        freq: 6 },
+      { word: "ləx̌",           freq: 8 },
+    ];
+
+    // ── Map frequency → font size (px) ──────────────────────────────────────
+    const minFreq = Math.min(...words.map(w => w.freq));
+    const maxFreq = Math.max(...words.map(w => w.freq));
+    const minSize = 14;
+    const maxSize = 52;
+
+    function freqToSize(f) {
+      if (maxFreq === minFreq) return (minSize + maxSize) / 2;
+      // square-root scale so low-freq words are still legible
+      const t = (Math.sqrt(f) - Math.sqrt(minFreq)) /
+                (Math.sqrt(maxFreq) - Math.sqrt(minFreq));
+      return Math.round(minSize + t * (maxSize - minSize));
+    }
+
+    // Colour palette — warm amber/teal gradient by frequency
+    function freqToColor(f) {
+      const t = (f - minFreq) / (maxFreq - minFreq || 1);
+      // low freq → cool blue-green, high freq → warm amber
+      const r = Math.round(80  + t * 175);
+      const g = Math.round(180 - t * 60);
+      const b = Math.round(220 - t * 170);
+      return `rgb(${r},${g},${b})`;
+    }
+
+    // ── Build the hidden <ul> that TagCanvas reads ───────────────────────────
+    const ul = document.getElementById('taglist');
+    words.forEach(({ word, freq }) => {
+      const li = document.createElement('li');
+      const a  = document.createElement('a');
+      a.href       = '#';
+      a.textContent = word;
+      a.style.fontSize  = freqToSize(freq) + 'px';
+      a.style.color     = freqToColor(freq);
+      a.style.fontFamily = "'Noto Sans', 'Segoe UI', Arial, sans-serif";
+      a.dataset.freq = freq;
+      // prevent navigation
+      a.addEventListener('click', e => e.preventDefault());
+      li.appendChild(a);
+      ul.appendChild(li);
+    });
+
+    // ── Launch TagCanvas ─────────────────────────────────────────────────────
+    window.addEventListener('load', () => {
+      try {
+        TagCanvas.Start('tagcloud', 'taglist', {
+          textFont:       "'Noto Sans','Segoe UI',Arial,sans-serif",
+          textColour:     null,          // use each tag's own colour
+          outlineColour:  '#0d1117',     // match background for depth effect
+          outlineThickness: 1,
+          weight:         true,          // honour font-size as weight
+          weightMode:     'size',
+          weightFrom:     null,          // use element font-size
+          freezeActive:   true,          // pause spin on hover
+          activeCursor:   'pointer',
+          maxSpeed:       0.04,
+          minSpeed:       0.01,
+          decel:          0.97,
+          initial:        [0.3, -0.1],   // gentle initial spin
+          depth:          0.92,
+          zoom:           1.1,
+          wheelZoom:      true,
+          dragControl:    true,
+          reverse:        false,
+          shadow:         '#0d1117',
+          shadowBlur:     4,
+          bgColour:       '#0d1117',
+          bgRadius:       6,
+          padding:        6,
+          stretchX:       1,
+          stretchY:       1,
+          pulsateTo:      1.0,
+          pulsateTime:    0.5,
+          tooltip:        'native',
+          tooltipDelay:   300,
+        });
+      } catch (e) {
+        console.error('TagCanvas failed to start:', e);
+      }
+    });
+  </script>
+</body>
+</html>
