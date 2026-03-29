@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>3D Word Cloud — Lushootseed</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       background: #0d1117;
       display: flex;
@@ -13,46 +13,36 @@
       justify-content: center;
       min-height: 100vh;
       font-family: 'Noto Sans', 'Segoe UI', Arial, sans-serif;
+      user-select: none;
     }
     h1 {
-      color: #c9d1d9;
-      font-size: 1.1rem;
+      color: rgba(201,209,217,0.55);
+      font-size: 1rem;
       font-weight: 400;
-      letter-spacing: 0.08em;
-      margin-bottom: 12px;
-      opacity: 0.7;
+      letter-spacing: 0.1em;
+      margin-bottom: 10px;
     }
-    #tagcloud-wrap {
-      position: relative;
-    }
-    canvas#tagcloud {
-      display: block;
-      border-radius: 8px;
-    }
-    /* The tag list is hidden — TagCanvas reads it but we don't show it */
-    #tags {
-      display: none;
+    canvas { display: block; cursor: grab; border-radius: 8px; }
+    canvas:active { cursor: grabbing; }
+    #hint {
+      margin-top: 8px;
+      color: rgba(201,209,217,0.25);
+      font-size: 12px;
+      letter-spacing: 0.05em;
     }
   </style>
+  <!-- Noto Sans for IPA/combining-diacritic coverage -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;700&display=swap" rel="stylesheet">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/TagCanvas/2.11.1/tagcanvas.min.js"></script>
 </head>
 <body>
   <h1>Lushootseed Word Frequencies</h1>
-
-  <div id="tagcloud-wrap">
-    <canvas id="tagcloud" width="800" height="600"></canvas>
-    <div id="tags">
-      <ul id="taglist">
-        <!-- populated by JS below -->
-      </ul>
-    </div>
-  </div>
+  <canvas id="c" width="800" height="580"></canvas>
+  <div id="hint">drag to rotate &nbsp;·&nbsp; auto-rotating</div>
 
   <script>
-    // ── Word frequency data ──────────────────────────────────────────────────
-    const words = [
+    // ── Data ─────────────────────────────────────────────────────────────────
+    const DATA = [
       { word: "•al",           freq: 1 },
       { word: "•ul̓gʷədxʷ",    freq: 1 },
       { word: "c̓agʷa",        freq: 1 },
@@ -102,85 +92,162 @@
       { word: "ləx̌",           freq: 8 },
     ];
 
-    // ── Map frequency → font size (px) ──────────────────────────────────────
-    const minFreq = Math.min(...words.map(w => w.freq));
-    const maxFreq = Math.max(...words.map(w => w.freq));
-    const minSize = 14;
-    const maxSize = 52;
+    // ── Frequency → visual mappings ──────────────────────────────────────────
+    const freqs = DATA.map(d => d.freq);
+    const minF  = Math.min(...freqs);
+    const maxF  = Math.max(...freqs);
 
-    function freqToSize(f) {
-      if (maxFreq === minFreq) return (minSize + maxSize) / 2;
-      // square-root scale so low-freq words are still legible
-      const t = (Math.sqrt(f) - Math.sqrt(minFreq)) /
-                (Math.sqrt(maxFreq) - Math.sqrt(minFreq));
-      return Math.round(minSize + t * (maxSize - minSize));
+    function tFreq(f) {
+      return (Math.sqrt(f) - Math.sqrt(minF)) / (Math.sqrt(maxF) - Math.sqrt(minF) || 1);
     }
-
-    // Colour palette — warm amber/teal gradient by frequency
+    function freqToSize(f) { return 13 + tFreq(f) * 34; }   // 13 → 47 px at radius 1
     function freqToColor(f) {
-      const t = (f - minFreq) / (maxFreq - minFreq || 1);
-      // low freq → cool blue-green, high freq → warm amber
+      const t = tFreq(f);
       const r = Math.round(80  + t * 175);
-      const g = Math.round(180 - t * 60);
-      const b = Math.round(220 - t * 170);
-      return `rgb(${r},${g},${b})`;
+      const g = Math.round(185 - t * 65);
+      const b = Math.round(225 - t * 175);
+      return [r, g, b];
     }
 
-    // ── Build the hidden <ul> that TagCanvas reads ───────────────────────────
-    const ul = document.getElementById('taglist');
-    words.forEach(({ word, freq }) => {
-      const li = document.createElement('li');
-      const a  = document.createElement('a');
-      a.href       = '#';
-      a.textContent = word;
-      a.style.fontSize  = freqToSize(freq) + 'px';
-      a.style.color     = freqToColor(freq);
-      a.style.fontFamily = "'Noto Sans', 'Segoe UI', Arial, sans-serif";
-      a.dataset.freq = freq;
-      // prevent navigation
-      a.addEventListener('click', e => e.preventDefault());
-      li.appendChild(a);
-      ul.appendChild(li);
+    // ── Fibonacci sphere placement ────────────────────────────────────────────
+    const RADIUS  = 210;
+    const PHI     = (1 + Math.sqrt(5)) / 2;
+    const N       = DATA.length;
+
+    // Each tag stores its 3-D unit-sphere position
+    const tags = DATA.map(({ word, freq }, i) => {
+      const theta = Math.acos(1 - 2 * (i + 0.5) / N);
+      const angle = 2 * Math.PI * i / PHI;
+      return {
+        word, freq,
+        x: Math.sin(theta) * Math.cos(angle),
+        y: Math.sin(theta) * Math.sin(angle),
+        z: Math.cos(theta),
+        size:  freqToSize(freq),
+        color: freqToColor(freq),
+      };
     });
 
-    // ── Launch TagCanvas ─────────────────────────────────────────────────────
-    window.addEventListener('load', () => {
-      try {
-        TagCanvas.Start('tagcloud', 'taglist', {
-          textFont:       "'Noto Sans','Segoe UI',Arial,sans-serif",
-          textColour:     null,          // use each tag's own colour
-          outlineColour:  '#0d1117',     // match background for depth effect
-          outlineThickness: 1,
-          weight:         true,          // honour font-size as weight
-          weightMode:     'size',
-          weightFrom:     null,          // use element font-size
-          freezeActive:   true,          // pause spin on hover
-          activeCursor:   'pointer',
-          maxSpeed:       0.04,
-          minSpeed:       0.01,
-          decel:          0.97,
-          initial:        [0.3, -0.1],   // gentle initial spin
-          depth:          0.92,
-          zoom:           1.1,
-          wheelZoom:      true,
-          dragControl:    true,
-          reverse:        false,
-          shadow:         '#0d1117',
-          shadowBlur:     4,
-          bgColour:       '#0d1117',
-          bgRadius:       6,
-          padding:        6,
-          stretchX:       1,
-          stretchY:       1,
-          pulsateTo:      1.0,
-          pulsateTime:    0.5,
-          tooltip:        'native',
-          tooltipDelay:   300,
-        });
-      } catch (e) {
-        console.error('TagCanvas failed to start:', e);
+    // ── Canvas & rendering ───────────────────────────────────────────────────
+    const canvas = document.getElementById('c');
+    const ctx    = canvas.getContext('2d');
+    const CX     = canvas.width  / 2;
+    const CY     = canvas.height / 2;
+    const FL     = 500;  // focal length for perspective
+
+    function project(x, y, z) {
+      // perspective divide; z is in [-1,1] on sphere, scaled by RADIUS
+      const scale = FL / (FL + z * RADIUS);
+      return { sx: CX + x * RADIUS * scale, sy: CY - y * RADIUS * scale, scale };
+    }
+
+    function drawFrame() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Sort back-to-front so nearer words paint over farther ones
+      const sorted = tags.slice().sort((a, b) => a.z - b.z);
+
+      for (const t of sorted) {
+        const { sx, sy, scale } = project(t.x, t.y, t.z);
+
+        // depth: z in [-1, 1]; map to opacity [0.15, 1.0]
+        const depth   = (t.z + 1) / 2;
+        const opacity = 0.15 + depth * 0.85;
+
+        const px = t.size * scale;
+        const [r, g, b] = t.color;
+
+        ctx.font = `${px}px 'Noto Sans','Segoe UI',Arial,sans-serif`;
+        ctx.textAlign    = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.globalAlpha  = opacity;
+
+        // subtle shadow for depth
+        ctx.shadowColor  = `rgba(0,0,0,${0.6 * depth})`;
+        ctx.shadowBlur   = 4 * scale;
+
+        ctx.fillStyle = `rgb(${r},${g},${b})`;
+        ctx.fillText(t.word, sx, sy);
       }
+
+      ctx.globalAlpha = 1;
+      ctx.shadowBlur  = 0;
+    }
+
+    // ── Rotation helpers ──────────────────────────────────────────────────────
+    function rotateY(tag, a) {
+      const cos = Math.cos(a), sin = Math.sin(a);
+      const x = tag.x * cos + tag.z * sin;
+      const z = -tag.x * sin + tag.z * cos;
+      tag.x = x; tag.z = z;
+    }
+    function rotateX(tag, a) {
+      const cos = Math.cos(a), sin = Math.sin(a);
+      const y = tag.y * cos - tag.z * sin;
+      const z = tag.y * sin + tag.z * cos;
+      tag.y = y; tag.z = z;
+    }
+
+    // ── Interaction ───────────────────────────────────────────────────────────
+    let isDragging = false;
+    let lastX = 0, lastY = 0;
+    let vx = 0, vy = 0;               // angular velocity (rad/frame)
+    const AUTO_SPEED = 0.004;          // auto-rotation speed when idle
+
+    canvas.addEventListener('mousedown', e => {
+      isDragging = true;
+      lastX = e.clientX; lastY = e.clientY;
+      vx = vy = 0;
     });
+    window.addEventListener('mousemove', e => {
+      if (!isDragging) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY;
+      vy = dx * 0.004;   // horizontal drag → Y-axis rotation
+      vx = dy * 0.004;   // vertical drag   → X-axis rotation
+      tags.forEach(t => { rotateY(t, vy); rotateX(t, vx); });
+    });
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    // Touch support
+    canvas.addEventListener('touchstart', e => {
+      isDragging = true;
+      lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+      vx = vy = 0;
+      e.preventDefault();
+    }, { passive: false });
+    canvas.addEventListener('touchmove', e => {
+      if (!isDragging) return;
+      const dx = e.touches[0].clientX - lastX;
+      const dy = e.touches[0].clientY - lastY;
+      lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+      vy = dx * 0.004;
+      vx = dy * 0.004;
+      tags.forEach(t => { rotateY(t, vy); rotateX(t, vx); });
+      e.preventDefault();
+    }, { passive: false });
+    canvas.addEventListener('touchend', () => { isDragging = false; });
+
+    // ── Animation loop ────────────────────────────────────────────────────────
+    function animate() {
+      requestAnimationFrame(animate);
+
+      if (isDragging) {
+        // positions already updated in mousemove
+      } else {
+        // momentum decay
+        vx *= 0.92;
+        vy *= 0.92;
+        // blend toward auto-rotation
+        vy += (AUTO_SPEED - vy) * 0.02;
+        tags.forEach(t => { rotateY(t, vy); rotateX(t, vx); });
+      }
+
+      drawFrame();
+    }
+
+    animate();
   </script>
 </body>
 </html>
