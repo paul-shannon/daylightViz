@@ -30,6 +30,36 @@
       font-size: 12px;
       letter-spacing: 0.05em;
     }
+    #word-dialog {
+      background: #161b22;
+      color: #c9d1d9;
+      border: 1px solid rgba(201,209,217,0.2);
+      border-radius: 10px;
+      padding: 28px 32px 24px;
+      min-width: 220px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    }
+    #word-dialog::backdrop {
+      background: rgba(0,0,0,0.55);
+    }
+    #word-display {
+      font-size: 2rem;
+      font-family: 'Noto Sans', 'Segoe UI', Arial, sans-serif;
+      margin-bottom: 20px;
+      letter-spacing: 0.05em;
+    }
+    #close-dialog {
+      background: rgba(201,209,217,0.1);
+      color: #c9d1d9;
+      border: 1px solid rgba(201,209,217,0.3);
+      border-radius: 6px;
+      padding: 6px 20px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+    }
+    #close-dialog:hover { background: rgba(201,209,217,0.2); }
   </style>
   <!-- Noto Sans for IPA/combining-diacritic coverage -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -39,6 +69,10 @@
   <h1>Lushootseed Word Frequencies</h1>
   <canvas id="c" width="800" height="580"></canvas>
   <div id="hint">drag to rotate &nbsp;·&nbsp; auto-rotating</div>
+  <dialog id="word-dialog">
+    <p id="word-display"></p>
+    <button id="close-dialog">Close</button>
+  </dialog>
 
   <script>
     // ── Data ─────────────────────────────────────────────────────────────────
@@ -128,6 +162,16 @@
       };
     });
 
+    // ── Modal dialog ─────────────────────────────────────────────────────────
+    const dialog      = document.getElementById('word-dialog');
+    const wordDisplay = document.getElementById('word-display');
+    document.getElementById('close-dialog').addEventListener('click', () => dialog.close());
+
+    function showWordDialog(word) {
+      wordDisplay.textContent = word;
+      dialog.showModal();
+    }
+
     // ── Canvas & rendering ───────────────────────────────────────────────────
     const canvas = document.getElementById('c');
     const ctx    = canvas.getContext('2d');
@@ -141,14 +185,19 @@
       return { sx: CX + x * RADIUS * scale, sy: CY - y * RADIUS * scale, scale };
     }
 
+    // Stores projected positions of rendered words (populated each frame)
+    let lastProjected = [];
+
     function drawFrame() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Sort back-to-front so nearer words paint over farther ones
       const sorted = tags.slice().sort((a, b) => a.z - b.z);
+      lastProjected = [];
 
       for (const t of sorted) {
         const { sx, sy, scale } = project(t.x, t.y, t.z);
+        lastProjected.push({ word: t.word, freq: t.freq, sx, sy, px: t.size * scale });
 
         // depth: z in [-1, 1]; map to opacity [0.15, 1.0]
         const depth   = (t.z + 1) / 2;
@@ -194,9 +243,12 @@
     let vx = 0, vy = 0;               // angular velocity (rad/frame)
     const AUTO_SPEED = 0.004;          // auto-rotation speed when idle
 
+    let mouseDownX = 0, mouseDownY = 0;
+
     canvas.addEventListener('mousedown', e => {
       isDragging = true;
       lastX = e.clientX; lastY = e.clientY;
+      mouseDownX = e.clientX; mouseDownY = e.clientY;
       vx = vy = 0;
     });
     window.addEventListener('mousemove', e => {
@@ -228,6 +280,28 @@
       e.preventDefault();
     }, { passive: false });
     canvas.addEventListener('touchend', () => { isDragging = false; });
+
+    // Click: show modal if mouse didn't travel (i.e. wasn't a drag)
+    canvas.addEventListener('click', e => {
+      const dx = e.clientX - mouseDownX;
+      const dy = e.clientY - mouseDownY;
+      if (Math.sqrt(dx * dx + dy * dy) > 5) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const cx = e.clientX - rect.left;
+      const cy = e.clientY - rect.top;
+
+      // lastProjected is back-to-front; iterate in reverse to hit front words first
+      for (let i = lastProjected.length - 1; i >= 0; i--) {
+        const p = lastProjected[i];
+        const hw = p.px * 2.2;
+        const hh = p.px * 0.8;
+        if (Math.abs(cx - p.sx) < hw && Math.abs(cy - p.sy) < hh) {
+          showWordDialog(p.word);
+          return;
+        }
+      }
+    });
 
     // ── Animation loop ────────────────────────────────────────────────────────
     function animate() {

@@ -28,6 +28,34 @@
       pointer-events: none;
       white-space: nowrap;
     }
+    #word-dialog {
+      background: #161b22;
+      color: #c9d1d9;
+      border: 1px solid rgba(201,209,217,0.2);
+      border-radius: 10px;
+      padding: 28px 32px 24px;
+      min-width: 220px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    }
+    #word-dialog::backdrop { background: rgba(0,0,0,0.55); }
+    #word-display {
+      font-size: 2rem;
+      font-family: 'Noto Sans', 'Segoe UI', Arial, sans-serif;
+      margin-bottom: 20px;
+      letter-spacing: 0.05em;
+    }
+    #close-dialog {
+      background: rgba(201,209,217,0.1);
+      color: #c9d1d9;
+      border: 1px solid rgba(201,209,217,0.3);
+      border-radius: 6px;
+      padding: 6px 20px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+    }
+    #close-dialog:hover { background: rgba(201,209,217,0.2); }
   </style>
 
   <!-- esm.sh rewrites all bare specifiers (including troika's transitive deps)
@@ -44,6 +72,10 @@
 <body>
   <div id="title">Lushootseed Word Frequencies</div>
   <div id="hint">drag to orbit &nbsp;·&nbsp; scroll to zoom &nbsp;·&nbsp; auto-rotating</div>
+  <dialog id="word-dialog">
+    <p id="word-display"></p>
+    <button id="close-dialog">Close</button>
+  </dialog>
 
   <script type="module">
     import * as THREE from 'three';
@@ -437,6 +469,16 @@
       scene.add(mesh);
     });
 
+    // ── Modal dialog ─────────────────────────────────────────────────────────
+    const dialog      = document.getElementById('word-dialog');
+    const wordDisplay = document.getElementById('word-display');
+    document.getElementById('close-dialog').addEventListener('click', () => dialog.close());
+
+    function showWordDialog(word) {
+      wordDisplay.textContent = word;
+      dialog.showModal();
+    }
+
     // ── Hover highlight + click handler ─────────────────────────────────────
     const raycaster  = new THREE.Raycaster();
     const pointer    = new THREE.Vector2();
@@ -475,24 +517,7 @@
       ndcFromEvent(e);
       raycaster.setFromCamera(pointer, camera);
       const hits = raycaster.intersectObjects(scene.children, false);
-        if (hits.length > 0) {
-           const word = hits[0].object.text;
-           var freq = 0;
-           for(let i=0; i < words.length; i++){
-              var x = words[i]
-              if(x.word == word){
-                freq = x.freq;
-                break;
-                } // if matched
-              } // for x
-           console.log(word + ": " + freq)
-           //const freq = words.forEach(function(e){
-           //    if(e.word == word){
-           //        return(e.freq);
-           //               }
-           //   })
-           //console.log(hits[0].object.text);
-           }
+      if (hits.length > 0) showWordDialog(hits[0].object.text);
     });
 
     // ── Subtle depth-fog to reinforce the 3D sphere shape ────────────────────
