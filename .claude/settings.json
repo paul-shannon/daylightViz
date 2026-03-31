@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "agent",
+            "if": "Bash(git push*)",
+            "prompt": "A git push just completed in the paul-shannon/daylightViz repository. Use mcp__github__list_pull_requests to check if an open PR already exists for the current branch targeting main. If no open PR exists, use mcp__github__create_pull_request to create one targeting main. Use the most recent commit message as the PR title (strip the attribution URL line). Keep the PR body brief: one sentence describing the change, plus the attribution line.",
+            "statusMessage": "Creating PR..."
+          }
+        ]
+      }
+    ]
+  }
+}
