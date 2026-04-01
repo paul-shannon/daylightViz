@@ -450,6 +450,10 @@
     }
 
     // ── Build word meshes on sphere ──────────────────────────────────────────
+    // Sort highest-freq first so they land at index 0, which maps to the front
+    // pole of the Fibonacci sphere (z ≈ +RADIUS, closest to camera).
+    words.sort((a, b) => b.freq - a.freq);
+
     const positions = fibonacciSphere(words.length, RADIUS);
     const outward   = new THREE.Vector3();
 
@@ -526,7 +530,7 @@
     });
 
     // ── Subtle depth-fog to reinforce the 3D sphere shape ────────────────────
-    scene.fog = new THREE.FogExp2(0x0d1117, 0.0018);
+    scene.fog = new THREE.FogExp2(0x0d1117, 0.003);
 
     // ── Animation loop ───────────────────────────────────────────────────────
     function animate() {
