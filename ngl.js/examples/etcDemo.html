@@ -17,6 +17,10 @@
     const server = "http://127.0.0.1:5505/pdb/"
     var pdbA = "cla-no-tail.pdb"
     var pdbB = "pheophytin-no-tail.pdb"
+    var pdbC = "p19-no-tail.pdb"
+    var pdbD = "cytochrome-bf6-heme-porphyrin.pdb"
+    var pdbE = "3BQV-plastocyanin.pdb"
+
     const DEG = Math.PI / 180;
 
     document.addEventListener("DOMContentLoaded", async () => {
@@ -24,19 +28,43 @@
       window.stage = stage;
       stage.mouseControls.remove("clickPick-left");
       window.addEventListener("resize", () => stage.handleResize());
+
       const compA = await stage.loadFile(server + pdbA);
       compA.addRepresentation("ball+stick");
-      //compA.setPosition([-12, 0, 0]);
+      compA.setRotation([Math.PI/4.4, 0, 0]);
+      compA.setPosition ([20,   -43,   -53.8])
+
       const compB = await stage.loadFile(server + pdbB)
       compB.addRepresentation("ball+stick");
-      //  compB.setPosition([12, 0, 0]);
+      compB.setRotation([-Math.PI/8,-Math.PI/4, 0])
+      compB.setPosition( [0,       0,  2.12])
+
+      const compC = await stage.loadFile(server + pdbC)
+      compC.addRepresentation("ball+stick");
+      compC.setRotation([-37*DEG,120*DEG,20*DEG])
+      compC.setPosition([16,-20,15])
+
+      const compD = await stage.loadFile(server + pdbD)
+      compD.addRepresentation("ball+stick")
+      compD.setPosition([-147, -205, -178])
+      compD.setRotation([0, -70*DEG, -10*DEG])
+
+      const compE = await stage.loadFile(server + pdbE)
+      compE.addRepresentation("ribbon", {color: "residueIndex"})
+      compE.addRepresentation("spacefill", {sele: "CU"})
+      compE.setPosition([40,-80,8])        
+      //compE.setPosition([-147, -205, -178])
+      //compE.setRotation([0, -70*DEG, -10*DEG])
+
+      //compD.setRotation([-37*DEG,120*DEG,20*DEG])
+      //compD.setPosition([16,-20,15])
+
       window.A = compA;
       window.B = compB;
-      compA.setRotation([Math.PI/4.4, 0, 0]);
-        // see notes, etcDemo: place pheophyting fla
-      compB.setRotation([-Math.PI/8,-Math.PI/4, 0])
-      compA.setPosition ([20,   -43,   -53.8])
-      B.setPosition( [0,       0,  2.12])
+      window.C = compC;
+      window.D = compD;
+      window.E = compE;
+
       stage.autoView();
 
       const canvas = stage.viewer.renderer.domElement;
