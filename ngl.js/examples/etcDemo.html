@@ -14,7 +14,7 @@
 <body>
   <div id="viewport"></div>
   <script>
-    const server = "http://127.0.0.1:5005/pdb/"
+    const server = "http://127.0.0.1:5505/pdb/"
     var pdbA = "cla-no-tail.pdb"
     var pdbB = "pheophytin-no-tail.pdb"
     const DEG = Math.PI / 180;
@@ -32,9 +32,9 @@
       //  compB.setPosition([12, 0, 0]);
       window.A = compA;
       window.B = compB;
-      compA.setRotation([Math.PI/4, 0, 0]);
+      compA.setRotation([Math.PI/4.4, 0, 0]);
         // see notes, etcDemo: place pheophyting fla
-      compB.setRotation([0,-Math.PI/4, 0])
+      compB.setRotation([-Math.PI/8,-Math.PI/4, 0])
       compA.setPosition ([20,   -43,   -53.8])
       B.setPosition( [0,       0,  2.12])
       stage.autoView();

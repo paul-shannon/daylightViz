@@ -7,7 +7,7 @@ default:
 	@echo etcApp
 	@echo photosynthesis
 
-PORT = 5005
+PORT = 5505
 
 venv:
 	@echo source /Users/paul/github/slexil2/py3119slexil/bin/activate
