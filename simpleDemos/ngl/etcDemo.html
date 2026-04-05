@@ -34,7 +34,39 @@
 
     #status { font-size: 10px; color: #888; min-height: 14px; }
 
-    #viewport { flex: 1; }
+    #viewport { flex: 1; position: relative; }
+
+    /* ── Sun ── */
+    #sun {
+      position: absolute;
+      top: 18px; right: 18px;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #fff9d0 0%, #ffe040 45%, #ff9500 80%, transparent 100%);
+      box-shadow: 0 0 18px 8px rgba(255, 210, 0, 0.45),
+                  0 0 40px 18px rgba(255, 160, 0, 0.18);
+      animation: sunPulse 3s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 10;
+    }
+    @keyframes sunPulse {
+      0%, 100% { opacity: 0.85; transform: scale(1);   }
+      50%       { opacity: 1.00; transform: scale(1.18); }
+    }
+
+    /* ── Photon particle ── */
+    .photon {
+      position: absolute;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #fff 0%, #ffe000 55%, transparent 100%);
+      box-shadow: 0 0 8px 4px rgba(255, 230, 0, 0.9);
+      pointer-events: none;
+      z-index: 20;
+      transition: top 0.45s cubic-bezier(.4,0,.2,1),
+                  left 0.45s cubic-bezier(.4,0,.2,1),
+                  opacity 0.15s ease;
+    }
   </style>
 
   <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
@@ -54,7 +86,9 @@
     <button id="fireBtn" disabled>⚡ Fire Photon</button>
   </div>
 
-  <div id="viewport"></div>
+  <div id="viewport">
+    <div id="sun"></div>
+  </div>
 
   <script>
     // PDB files live in ngl.js/examples/pdb/ relative to the repo root.
@@ -196,6 +230,46 @@
         stage.animationControls.orient(blendOrient(cur, focused, blend), duration);
       }
 
+      // ── Photon particle ───────────────────────────────────────────────────
+      // Launches a glowing CSS dot from the sun element to the centre of the
+      // viewport (where CLA will be after the zoom), then removes it.
+      // callback fires when the particle arrives (after the travel duration).
+      function launchPhoton(travelMs, callback) {
+        const vp     = document.getElementById("viewport");
+        const sun    = document.getElementById("sun");
+        const sunR   = sun.getBoundingClientRect();
+        const vpR    = vp.getBoundingClientRect();
+
+        // Sun centre relative to viewport
+        const startX = sunR.left - vpR.left + sunR.width  / 2;
+        const startY = sunR.top  - vpR.top  + sunR.height / 2;
+
+        // Aim at viewport centre (CLA will be roughly there after zoom)
+        const endX = vpR.width  / 2;
+        const endY = vpR.height / 2;
+
+        const p = document.createElement("div");
+        p.className = "photon";
+        p.style.left = (startX - 3.5) + "px";
+        p.style.top  = (startY - 3.5) + "px";
+        vp.appendChild(p);
+
+        // Override transition duration to match travelMs
+        p.style.transition =
+          `top ${travelMs}ms cubic-bezier(.4,0,.2,1),` +
+          `left ${travelMs}ms cubic-bezier(.4,0,.2,1),` +
+          `opacity 0.12s ease`;
+
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          p.style.left = (endX - 3.5) + "px";
+          p.style.top  = (endY - 3.5) + "px";
+          setTimeout(() => {
+            p.style.opacity = "0";
+            setTimeout(() => { p.remove(); callback(); }, 150);
+          }, travelMs);
+        }));
+      }
+
       // ── Photon-capture animation ───────────────────────────────────────────
       // BLINK_SEQUENCE entries: [visible, durationMs]
       const BLINK_SEQUENCE = [
@@ -210,28 +284,29 @@
       function firePhoton() {
         const btn = document.getElementById("fireBtn");
         btn.disabled = true;
-        document.getElementById("status").textContent = "Photon absorbed!";
+        document.getElementById("status").textContent = "Photon incoming…";
 
-        // Zoom in on CLA (compA) at 65 %, keeping pheophytin (compB) in frame.
-        // Adjust blend (0–1) to taste: lower = more of the full scene visible.
-        zoomToward(compA, 0.65, 600);
+        // Camera zooms toward CLA while the photon travels
+        zoomToward(compA, 0.65, 500);
 
-        let i = 0;
-        function step() {
-          if (i >= BLINK_SEQUENCE.length) {
-            document.getElementById("status").textContent = "Energy transferred";
-            // Restore full-scene view after the blink cycle
-            if (fullOrient) stage.animationControls.orient(fullOrient, 700);
-            btn.disabled = false;
-            return;
+        // Photon flies from sun to molecule (~450 ms travel)
+        launchPhoton(450, () => {
+          document.getElementById("status").textContent = "Photon absorbed!";
+          let i = 0;
+          function step() {
+            if (i >= BLINK_SEQUENCE.length) {
+              document.getElementById("status").textContent = "Energy transferred";
+              if (fullOrient) stage.animationControls.orient(fullOrient, 700);
+              btn.disabled = false;
+              return;
+            }
+            const [visible, delay] = BLINK_SEQUENCE[i++];
+            excitedRepr.setVisibility(visible);
+            stage.viewer.requestRender();
+            setTimeout(step, delay);
           }
-          const [visible, delay] = BLINK_SEQUENCE[i++];
-          excitedRepr.setVisibility(visible);
-          stage.viewer.requestRender();
-          setTimeout(step, delay);
-        }
-        // Start blink slightly after camera begins moving
-        setTimeout(step, 200);
+          step();
+        });
       }
 
       document.getElementById("fireBtn").addEventListener("click", firePhoton);
