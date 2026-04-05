@@ -34,7 +34,14 @@
 
     #status { font-size: 10px; color: #888; min-height: 14px; }
 
-    #viewport { flex: 1; position: relative; }
+    #viewport { flex: 1; }
+
+    /* ── Fixed overlay — sits above the WebGL canvas ── */
+    #overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 100;
+    }
 
     /* ── Sun ── */
     #sun {
@@ -46,8 +53,6 @@
       box-shadow: 0 0 18px 8px rgba(255, 210, 0, 0.45),
                   0 0 40px 18px rgba(255, 160, 0, 0.18);
       animation: sunPulse 3s ease-in-out infinite;
-      pointer-events: none;
-      z-index: 10;
     }
     @keyframes sunPulse {
       0%, 100% { opacity: 0.85; transform: scale(1);   }
@@ -57,15 +62,10 @@
     /* ── Photon particle ── */
     .photon {
       position: absolute;
-      width: 7px; height: 7px;
+      width: 9px; height: 9px;
       border-radius: 50%;
       background: radial-gradient(circle, #fff 0%, #ffe000 55%, transparent 100%);
-      box-shadow: 0 0 8px 4px rgba(255, 230, 0, 0.9);
-      pointer-events: none;
-      z-index: 20;
-      transition: top 0.45s cubic-bezier(.4,0,.2,1),
-                  left 0.45s cubic-bezier(.4,0,.2,1),
-                  opacity 0.15s ease;
+      box-shadow: 0 0 10px 5px rgba(255, 230, 0, 0.95);
     }
   </style>
 
@@ -86,7 +86,9 @@
     <button id="fireBtn" disabled>⚡ Fire Photon</button>
   </div>
 
-  <div id="viewport">
+  <div id="viewport"></div>
+  <!-- Fixed overlay above the WebGL canvas; pointer-events:none lets mouse through -->
+  <div id="overlay">
     <div id="sun"></div>
   </div>
 
@@ -231,41 +233,47 @@
       }
 
       // ── Photon particle ───────────────────────────────────────────────────
-      // Launches a glowing CSS dot from the sun element to the centre of the
-      // viewport (where CLA will be after the zoom), then removes it.
-      // callback fires when the particle arrives (after the travel duration).
+      // The NGL WebGL canvas creates a GPU compositing layer that sits above
+      // any sibling DOM elements regardless of z-index.  The only reliable way
+      // to draw on top of it is to use a position:fixed overlay (#overlay)
+      // that is a child of <body>, not of #viewport.
+      //
+      // All coordinates here are in page (fixed) space.
       function launchPhoton(travelMs, callback) {
-        const vp     = document.getElementById("viewport");
-        const sun    = document.getElementById("sun");
-        const sunR   = sun.getBoundingClientRect();
-        const vpR    = vp.getBoundingClientRect();
+        const overlay = document.getElementById("overlay");
+        const sun     = document.getElementById("sun");
+        const vp      = document.getElementById("viewport");
+        const sunR    = sun.getBoundingClientRect();
+        const vpR     = vp.getBoundingClientRect();
 
-        // Sun centre relative to viewport
-        const startX = sunR.left - vpR.left + sunR.width  / 2;
-        const startY = sunR.top  - vpR.top  + sunR.height / 2;
+        // Sun centre in page coords
+        const startX = sunR.left + sunR.width  / 2;
+        const startY = sunR.top  + sunR.height / 2;
 
-        // Aim at viewport centre (CLA will be roughly there after zoom)
-        const endX = vpR.width  / 2;
-        const endY = vpR.height / 2;
+        // Target: centre of the NGL viewport in page coords
+        const endX = vpR.left + vpR.width  / 2;
+        const endY = vpR.top  + vpR.height / 2;
 
+        const half = 4.5;
         const p = document.createElement("div");
         p.className = "photon";
-        p.style.left = (startX - 3.5) + "px";
-        p.style.top  = (startY - 3.5) + "px";
-        vp.appendChild(p);
-
-        // Override transition duration to match travelMs
+        p.style.left    = (startX - half) + "px";
+        p.style.top     = (startY - half) + "px";
+        p.style.opacity = "1";
         p.style.transition =
           `top ${travelMs}ms cubic-bezier(.4,0,.2,1),` +
           `left ${travelMs}ms cubic-bezier(.4,0,.2,1),` +
-          `opacity 0.12s ease`;
+          `opacity 0.15s ease`;
+        overlay.appendChild(p);
 
+        // Double-rAF ensures the browser has painted the initial position
+        // before the transition target is set.
         requestAnimationFrame(() => requestAnimationFrame(() => {
-          p.style.left = (endX - 3.5) + "px";
-          p.style.top  = (endY - 3.5) + "px";
+          p.style.left = (endX - half) + "px";
+          p.style.top  = (endY - half) + "px";
           setTimeout(() => {
             p.style.opacity = "0";
-            setTimeout(() => { p.remove(); callback(); }, 150);
+            setTimeout(() => { p.remove(); callback(); }, 160);
           }, travelMs);
         }));
       }
