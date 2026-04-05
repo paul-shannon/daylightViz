@@ -31,6 +31,7 @@
 
       const compA = await stage.loadFile(server + pdbA);
       compA.addRepresentation("ball+stick");
+      //compA.addRepresentation("spacefill", {sele: ":A.MG"})        
       compA.setRotation([Math.PI/4.4, 0, 0]);
       compA.setPosition ([20,   -43,   -53.8])
 
@@ -51,8 +52,9 @@
 
       const compE = await stage.loadFile(server + pdbE)
       compE.addRepresentation("ribbon", {color: "residueIndex"})
-      compE.addRepresentation("spacefill", {sele: "CU"})
+      window.cu = compE.addRepresentation("spacefill", {sele: "CU"})
       compE.setPosition([40,-80,8])        
+      compE.setRotation([0*DEG, 270*DEG, 40*DEG])
       //compE.setPosition([-147, -205, -178])
       //compE.setRotation([0, -70*DEG, -10*DEG])
 
@@ -80,6 +82,31 @@
           }
          }); // add
     }); // DOMContentLoaded
+//--------------------------------------------------------------------------------
+function energizeCLA()
+{
+    const targets = ["348:A.NA",
+                     "348:A.NB",
+                     "348:A.NC",
+                     "348:A.ND",
+                     "348:A.C1C"]
+  for (let i=0; i < targets.length; i++){
+     A.addRepresentation("spacefill", {
+         sele: targets[i],
+         radiusScale: 0.3,
+         radiusType: "vdw",
+         colorValue: "white"
+         });
+      } // for i
+
+    /***
+     A.reprList[0].setParameters({ opacity: 0.5, wireframe: true });
+    ***/
+
+
+} // energizeCLA
+//--------------------------------------------------------------------------------
+
   </script>
 </body>
 </html>
