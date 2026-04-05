@@ -150,12 +150,49 @@
 
       stage.autoView();
 
-      document.getElementById("status").textContent = "Ready";
-      document.getElementById("fireBtn").disabled = false;
+      // ── Camera helpers ────────────────────────────────────────────────────
+      // NGL stores the whole scene transform (translation + scale that embodies
+      // pan & zoom) as a Matrix4, accessible via:
+      //
+      //   stage.viewerControls.getOrientation()  → Matrix4 (current)
+      //   stage.animationControls.orient(m, ms)  → animate to Matrix4 m
+      //   component.autoView(0)                  → INSTANT snap to fit component
+      //
+      // Trick for "partial zoom toward A while keeping B visible":
+      //   1. snapshot current orientation
+      //   2. instant-snap to A → capture that matrix → restore
+      //   3. element-lerp the two matrices at t = blend (0=full scene, 1=full A)
+      //   4. animate to the blended matrix
+
+      // Capture the full-scene orientation once autoView has settled.
+      let fullOrient = null;
+      setTimeout(() => {
+        fullOrient = stage.viewerControls.getOrientation().clone();
+      }, 50);
+
+      function blendOrient(from, to, t) {
+        // Element-wise lerp of two Matrix4 objects.
+        // Safe as long as there's no rotation change between states, which is
+        // true here (we never rotate, only pan/zoom).
+        const result = from.clone();
+        const fe = from.elements, te = to.elements, re = result.elements;
+        for (let i = 0; i < 16; i++) re[i] = fe[i] + (te[i] - fe[i]) * t;
+        return result;
+      }
+
+      function zoomToward(comp, blend, duration) {
+        // Save where we are now
+        const cur = stage.viewerControls.getOrientation().clone();
+        // Instantly snap to fit comp → read that matrix → restore instantly
+        comp.autoView(0);
+        const focused = stage.viewerControls.getOrientation().clone();
+        stage.viewerControls.orient(cur);
+        // Animate smoothly to the blended target
+        stage.animationControls.orient(blendOrient(cur, focused, blend), duration);
+      }
 
       // ── Photon-capture animation ───────────────────────────────────────────
-      // Blink sequence: simulates photon absorption → excited state → relaxation.
-      // Each entry is [visible, durationMs].
+      // BLINK_SEQUENCE entries: [visible, durationMs]
       const BLINK_SEQUENCE = [
         [true,  300],  // photon absorbed → excited state
         [false, 150],  // brief dark
@@ -170,10 +207,16 @@
         btn.disabled = true;
         document.getElementById("status").textContent = "Photon absorbed!";
 
+        // Zoom in on CLA (compA) at 65 %, keeping pheophytin (compB) in frame.
+        // Adjust blend (0–1) to taste: lower = more of the full scene visible.
+        zoomToward(compA, 0.65, 600);
+
         let i = 0;
         function step() {
           if (i >= BLINK_SEQUENCE.length) {
             document.getElementById("status").textContent = "Energy transferred";
+            // Restore full-scene view after the blink cycle
+            if (fullOrient) stage.animationControls.orient(fullOrient, 700);
             btn.disabled = false;
             return;
           }
@@ -182,7 +225,8 @@
           stage.viewer.requestRender();
           setTimeout(step, delay);
         }
-        step();
+        // Start blink slightly after camera begins moving
+        setTimeout(step, 200);
       }
 
       document.getElementById("fireBtn").addEventListener("click", firePhoton);
