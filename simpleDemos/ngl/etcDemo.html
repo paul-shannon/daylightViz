@@ -212,37 +212,31 @@
       }, 50);
 
       // ── getCanvasCoordinates ──────────────────────────────────────────────
-      // Convert an NGL component's center to CSS canvas pixel coordinates.
+      // Convert an NGL component's visual centre to CSS canvas pixel {x, y}.
       //
-      // Coordinate chain:
-      //   comp.getCenter()          → structure-local space (raw PDB coords)
-      //   .applyMatrix4(comp.matrix)→ NGL scene space
-      //                               comp.matrix = translate(position) ×
-      //                                             rotate(quaternion) ×
-      //                                             translate(-structureCenter)
-      //                               ∴ getCenter().applyMatrix4(matrix) = comp.position
-      //   .applyMatrix4(getOrientation()) → view space (encodes pan/zoom/rotate)
-      //   .project(camera)          → NDC  [-1, 1]
-      //   formula below             → CSS pixels
+      // WHY NOT viewerControls.getOrientation()?
+      //   That matrix encodes zoom as a *scale factor* (= camera.position.z).
+      //   Multiplying atom coordinates by it blows positions up by ~100-1000x.
       //
-      // Usage:
-      //   const {x, y} = getCanvasCoordinates(A);
+      // CORRECT APPROACH - use the Three.js scene graph:
+      //   NGL places each component under:
+      //     scene -> rotationGroup -> translationGroup -> comp.group
+      //   comp.group.getWorldPosition() traverses that chain to give the
+      //   molecule's centre in Three.js world coordinates.
+      //   camera.project() then maps world -> NDC [-1,1] -> CSS pixels.
       //
-      // To project an arbitrary scene-space Vector3 instead:
-      //   const {x, y} = getCanvasCoordinates(null, myVector3);
-      function getCanvasCoordinates(comp, scenePos) {
-        const v = scenePos
-          ? scenePos.clone()
-          : comp.getCenter().clone().applyMatrix4(comp.matrix);
-        v.applyMatrix4(stage.viewerControls.getOrientation());
-        v.project(stage.viewer.camera);
+      // Usage:  const {x, y} = getCanvasCoordinates(A);
+      function getCanvasCoordinates(comp) {
+        const v = comp.position.clone();   // any Vector3; getWorldPosition overwrites it
+        comp.group.getWorldPosition(v);    // world coords via scene graph
+        v.project(stage.viewer.camera);    // NDC [-1, 1]
         const el = stage.viewer.renderer.domElement;
         return {
           x:  (v.x + 1) / 2 * el.clientWidth,
           y: -(v.y - 1) / 2 * el.clientHeight
         };
       }
-      window.getCanvasCoordinates = getCanvasCoordinates;  // expose to console
+      window.getCanvasCoordinates = getCanvasCoordinates;
 
       function blendOrient(from, to, t) {
         // Element-wise lerp of two Matrix4 objects.
