@@ -72,6 +72,11 @@
     // Atom names come directly from cla-no-tail.pdb (residue CLA A 348).
     // Side-chain carbons (CMA/CMB/etc., CAB/CBB/etc.) are excluded here
     // so only the pi-conjugated path is highlighted.
+    // NGL atom-name syntax: prefix each name with "." (dot notation).
+    // cla-no-tail.pdb already strips the phytol tail (those atoms are in REMARK
+    // lines, which NGL ignores), so every HETATM is part of the macrocycle or
+    // a short side-chain.  The dot-prefixed list below selects only the 24-atom
+    // conjugated ring + Mg, excluding methyl/vinyl side chains.
     const PORPHYRIN_RING_SELE = [
       "MG",
       "CHA","CHB","CHC","CHD",
@@ -80,7 +85,7 @@
       "C1B","C2B","C3B","C4B",
       "C1C","C2C","C3C","C4C",
       "C1D","C2D","C3D","C4D"
-    ].map(n => `name ${n}`).join(" or ");
+    ].map(n => `.${n}`).join(" or ");
 
     // ── Stage setup ──────────────────────────────────────────────────────────
     document.addEventListener("DOMContentLoaded", async () => {
@@ -107,13 +112,15 @@
       //     .setParameters({...})         – update colorValue, opacity, etc.
       //   stage.viewer.requestRender()    – force a redraw after programmatic changes
       //
+      // "visible" is NOT a valid addRepresentation param — NGL ignores it.
+      // Create the repr visible, then immediately call setVisibility(false).
       const excitedRepr = compA.addRepresentation("ball+stick", {
         sele: PORPHYRIN_RING_SELE,
         colorValue: "#ffee22",   // bright excited-state yellow
-        opacity: 0.95,
-        multipleBond: "symmetric",
-        visible: false            // hidden until photon fires
+        multipleBond: "symmetric"
       });
+      excitedRepr.setVisibility(false);   // hide now that geometry is built
+      stage.viewer.requestRender();
       window.excitedRepr = excitedRepr;   // expose for console experiments
 
       const compB = await stage.loadFile(server + "pheophytin-no-tail.pdb");
@@ -150,11 +157,11 @@
       // Blink sequence: simulates photon absorption → excited state → relaxation.
       // Each entry is [visible, durationMs].
       const BLINK_SEQUENCE = [
-        [true,  90],   // photon absorbed → excited state
-        [false, 60],   // brief dark
-        [true,  90],   // re-emission / re-excitation
-        [false, 60],
-        [true,  200],  // longer excited state (energy trapped)
+        [true,  300],  // photon absorbed → excited state
+        [false, 150],  // brief dark
+        [true,  300],  // vibrational re-excitation
+        [false, 150],
+        [true,  500],  // longer excited state (energy trapped)
         [false,   0]   // relaxed – done
       ];
 
