@@ -214,22 +214,28 @@
       // ── getCanvasCoordinates ──────────────────────────────────────────────
       // Convert an NGL component's visual centre to CSS canvas pixel {x, y}.
       //
-      // WHY NOT viewerControls.getOrientation()?
-      //   That matrix encodes zoom as a *scale factor* (= camera.position.z).
-      //   Multiplying atom coordinates by it blows positions up by ~100-1000x.
+      // NGL scene hierarchy (all public on stage.viewer):
+      //   scene -> rotationGroup (rotation only)
+      //         -> translationGroup (translation only)
+      //         -> component objects
       //
-      // CORRECT APPROACH - use the Three.js scene graph:
-      //   NGL places each component under:
-      //     scene -> rotationGroup -> translationGroup -> comp.group
-      //   comp.group.getWorldPosition() traverses that chain to give the
-      //   molecule's centre in Three.js world coordinates.
-      //   camera.project() then maps world -> NDC [-1,1] -> CSS pixels.
+      // comp.position  = visual centre of the molecule in translationGroup space
+      //                  (NGL centers each structure at its geometric mean, so
+      //                   setPosition([x,y,z]) maps the atom-mean to [x,y,z])
+      //
+      // Steps:
+      //   1. comp.position            in translationGroup local space
+      //   2. + translationGroup.pos   in rotationGroup local space
+      //   3. applyQuaternion(rotQ)    in Three.js world space
+      //   4. project(camera)          NDC [-1,1]
+      //   5. formula                  CSS pixels
       //
       // Usage:  const {x, y} = getCanvasCoordinates(A);
       function getCanvasCoordinates(comp) {
-        const v = comp.position.clone();   // any Vector3; getWorldPosition overwrites it
-        comp.group.getWorldPosition(v);    // world coords via scene graph
-        v.project(stage.viewer.camera);    // NDC [-1, 1]
+        const v = comp.position.clone();
+        v.add(stage.viewer.translationGroup.position);
+        v.applyQuaternion(stage.viewer.rotationGroup.quaternion);
+        v.project(stage.viewer.camera);
         const el = stage.viewer.renderer.domElement;
         return {
           x:  (v.x + 1) / 2 * el.clientWidth,
