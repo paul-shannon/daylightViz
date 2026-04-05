@@ -211,6 +211,39 @@
         fullOrient = stage.viewerControls.getOrientation().clone();
       }, 50);
 
+      // ── getCanvasCoordinates ──────────────────────────────────────────────
+      // Convert an NGL component's center to CSS canvas pixel coordinates.
+      //
+      // Coordinate chain:
+      //   comp.getCenter()          → structure-local space (raw PDB coords)
+      //   .applyMatrix4(comp.matrix)→ NGL scene space
+      //                               comp.matrix = translate(position) ×
+      //                                             rotate(quaternion) ×
+      //                                             translate(-structureCenter)
+      //                               ∴ getCenter().applyMatrix4(matrix) = comp.position
+      //   .applyMatrix4(getOrientation()) → view space (encodes pan/zoom/rotate)
+      //   .project(camera)          → NDC  [-1, 1]
+      //   formula below             → CSS pixels
+      //
+      // Usage:
+      //   const {x, y} = getCanvasCoordinates(A);
+      //
+      // To project an arbitrary scene-space Vector3 instead:
+      //   const {x, y} = getCanvasCoordinates(null, myVector3);
+      function getCanvasCoordinates(comp, scenePos) {
+        const v = scenePos
+          ? scenePos.clone()
+          : comp.getCenter().clone().applyMatrix4(comp.matrix);
+        v.applyMatrix4(stage.viewerControls.getOrientation());
+        v.project(stage.viewer.camera);
+        const el = stage.viewer.renderer.domElement;
+        return {
+          x:  (v.x + 1) / 2 * el.clientWidth,
+          y: -(v.y - 1) / 2 * el.clientHeight
+        };
+      }
+      window.getCanvasCoordinates = getCanvasCoordinates;  // expose to console
+
       function blendOrient(from, to, t) {
         // Element-wise lerp of two Matrix4 objects.
         // Safe as long as there's no rotation change between states, which is
@@ -250,9 +283,12 @@
         const startX = sunR.left + sunR.width  / 2;
         const startY = sunR.top  + sunR.height / 2;
 
-        // Target: centre of the NGL viewport in page coords
-        const endX = vpR.left + vpR.width  / 2;
-        const endY = vpR.top  + vpR.height / 2;
+        // Target: screen position of the CLA molecule centre
+        // getCanvasCoordinates returns coords relative to the canvas element;
+        // add vpR.left/top to convert to page (fixed) coordinates.
+        const claCanvas = getCanvasCoordinates(compA);
+        const endX = vpR.left + claCanvas.x;
+        const endY = vpR.top  + claCanvas.y;
 
         const half = 4.5;
         const p = document.createElement("div");
