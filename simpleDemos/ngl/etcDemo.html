@@ -164,6 +164,9 @@
       //   3. element-lerp the two matrices at t = blend (0=full scene, 1=full A)
       //   4. animate to the blended matrix
 
+      document.getElementById("status").textContent = "Ready";
+      document.getElementById("fireBtn").disabled = false;
+
       // Capture the full-scene orientation once autoView has settled.
       let fullOrient = null;
       setTimeout(() => {
