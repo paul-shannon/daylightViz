@@ -59,7 +59,7 @@
   <script>
     // PDB files live in ngl.js/examples/pdb/ relative to the repo root.
     // Assumes a live-server is launched at the repo root (e.g. port 5500).
-    const server = "/ngl.js/examples/pdb/";
+    const server = "http://127.0.0.1:5519/pdb/"
     const DEG = Math.PI / 180;
 
     // ── Porphyrin ring atom selection ────────────────────────────────────────
@@ -84,7 +84,7 @@
 
     // ── Stage setup ──────────────────────────────────────────────────────────
     document.addEventListener("DOMContentLoaded", async () => {
-      const stage = new NGL.Stage("viewport", { backgroundColor: "beige" });
+      const stage = new NGL.Stage("viewport", { backgroundColor: "black" });
       window.stage = stage;
       stage.mouseControls.remove("clickPick-left");
       window.addEventListener("resize", () => stage.handleResize());
