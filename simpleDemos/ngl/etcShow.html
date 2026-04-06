@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>etcDemo</title>
+  <title>etcShow</title>
   <style>
     * { ox-sizing: border-box; margin: 0; padding: 0; }
     body { background: #111; font-family: monospace; color: #ccc; display: flex; height: 100vh; }
@@ -71,7 +71,9 @@
       const compSun = await stage.loadFile(server + pdbSun)
       compSun.addRepresentation("spacefill",
                                 {color: "yellow",
-                                 radiusScale: 0.3})
+                                 radiusScale: 0.5})
+      compSun.setPosition([60,0,0])     
+
       window.A = compA;
       window.B = compB;
       window.C = compC;
@@ -94,12 +96,12 @@
           }
          }); // add
 
-
-    function travel(comp, destination){
+    //------------------------------------------------------------
+    function photonTravel(comp, destination, nextOperation){
        let mFrame = 0;
-       const mSteps = 4;
-       startX = 0; //comp.getCenter().x
-       startY = 0; //comp.getCenter().y
+       const mSteps = 100
+       startX = comp.getCenter().x + 0; // 0
+       startY = comp.getCenter().y - 18.2;// 0
        endX = destination.x
        endY = destination.y
        deltaX = (endX - startX)/mSteps;
@@ -108,27 +110,40 @@
        function step() {
           if (i >= mSteps) {
             complete = true;
+            nextOperation()
             return;
             }
           else {
-             console.log(i + ": from " + startX + ", " + startY + " to " + endX + ", " + endY);
-             i++;
+             //console.log(i + ": from " + startX + ", " + startY + " to " + endX + ", " + endY);
+             if(i > 80){
+                stage.animationControls.zoomMove(comp.getCenter(), -100, 1000)
+                setTimeout(function() {stage.viewer.requestRender()},0);
+                }
              const newX = startX + (i * deltaX)
              const newY = startY + (i * deltaY)
-             console.log("   step " + i  +  ": " + newX + ", " + newY);
+             //console.log("   step " + i  +  ": " + newX + ", " + newY);
              comp.setPosition([newX, newY, 0]);
              stage.viewer.requestRender();
              setTimeout(step, 100);
+             i++;
              } // else
            } // function step
         step()
-        console.log("--- leaving travel")
-        } // travel
 
-     window.travel = travel;
+        console.log("--- leaving photonTravel")
+        } // photonTravel
+    //------------------------------------------------------------
+     window.photonTravel = photonTravel;
 
     }); // DOMContentLoaded
 //--------------------------------------------------------------------------------
+function absorbPhoton(){
+   excitedRep.setVisibility(true)
+   sun.setVisibility(false)
+}
+window.absorbPhoton = absorbPhoton;
+//--------------------------------------------------------------------------------
+
 // Blink sequence: simulates photon absorption → excited state → relaxation.
 // Each entry is [visible, durationMs].
 
@@ -162,7 +177,7 @@ function firePhoton() {
 //--------------------------------------------------------------------------------
 const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 async function waitDemo(){
-    travel(sun, {x: 40.5, y: -11.7}).then(
+    photonTravel(sun, {x: 40.5, y: -11.7}).then(
      (value) => { console.log("travel good")},
      (error) => { console.log("travel error")});
     console.log("--- travel complete");
