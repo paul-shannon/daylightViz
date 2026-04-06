@@ -137,36 +137,95 @@
       compE.setPosition([40, -80, 8]);
       compE.setRotation([0, 270 * DEG, 40 * DEG]);
 
+      // ── Sun + photon (both use sun.pdb – a single CU atom) ───────────────────
+      // All positions are in NGL molecular-coordinate space, the same system
+      // used by setPosition() on every other component.  No canvas-coordinate
+      // mapping is needed, so the photon always lands exactly on the CLA Mg.
+
+      const SUN_POS  = [150,  90,  20];   // "off-stage" upper-right
+      const CLA_POS  = [ 20, -43, -53.8]; // must match compA.setPosition above
+
+      // Stationary sun: large warm-yellow sphere
+      const compSun = await stage.loadFile(server + "sun.pdb");
+      compSun.addRepresentation("spacefill", {
+        colorValue: "#ffcc00",
+        radiusScale: 8
+      });
+      compSun.setPosition(SUN_POS);
+
+      // Photon: smaller, brighter sphere – starts hidden at the sun
+      const compPhoton = await stage.loadFile(server + "sun.pdb");
+      compPhoton.addRepresentation("spacefill", {
+        colorValue: "#ffffff",
+        radiusScale: 3
+      });
+      compPhoton.setPosition(SUN_POS);
+      compPhoton.setVisibility(false);
+
       // Expose globals for console use
       window.A = compA; window.B = compB; window.C = compC;
       window.D = compD; window.E = compE;
+      window.Sun = compSun; window.Photon = compPhoton;
 
       stage.autoView();
 
       document.getElementById("status").textContent = "Ready";
       document.getElementById("fireBtn").disabled = false;
 
-      // ── Photon-capture animation ───────────────────────────────────────────
-      // Blink sequence: simulates photon absorption → excited state → relaxation.
-      // Each entry is [visible, durationMs].
-      const BLINK_SEQUENCE = [
-        [true,  90],   // photon absorbed → excited state
-        [false, 60],   // brief dark
-        [true,  90],   // re-emission / re-excitation
-        [false, 60],
-        [true,  200],  // longer excited state (energy trapped)
-        [false,   0]   // relaxed – done
-      ];
+      // ── Helpers ───────────────────────────────────────────────────────────────
 
+      // Resolves after msecs milliseconds.
       function launchPhoton(msecs) {
         return new Promise(resolve => setTimeout(resolve, msecs));
       }
 
+      // Animates comp.setPosition() from `from` to `to` over durationMs using
+      // requestAnimationFrame.  All coordinates are NGL molecular coords.
+      function travelTo(comp, from, to, durationMs) {
+        return new Promise(resolve => {
+          const t0 = performance.now();
+          function frame(now) {
+            const t = Math.min((now - t0) / durationMs, 1);
+            comp.setPosition([
+              from[0] + (to[0] - from[0]) * t,
+              from[1] + (to[1] - from[1]) * t,
+              from[2] + (to[2] - from[2]) * t
+            ]);
+            stage.viewer.requestRender();
+            if (t < 1) requestAnimationFrame(frame);
+            else resolve();
+          }
+          requestAnimationFrame(frame);
+        });
+      }
+
+      // ── Blink sequence: simulates photon absorption → excited state ───────────
+      const BLINK_SEQUENCE = [
+        [true,  90],
+        [false, 60],
+        [true,  90],
+        [false, 60],
+        [true,  200],
+        [false,   0]
+      ];
+
       async function firePhoton() {
         const btn = document.getElementById("fireBtn");
         btn.disabled = true;
+        document.getElementById("status").textContent = "Photon in flight…";
+
+        // 1. Show photon at sun and fly it to CLA (800 ms travel)
+        compPhoton.setPosition(SUN_POS);
+        compPhoton.setVisibility(true);
+        stage.viewer.requestRender();
+        await travelTo(compPhoton, SUN_POS, CLA_POS, 800);
+
+        // 2. Hide photon – it has been "absorbed"
+        compPhoton.setVisibility(false);
+        stage.viewer.requestRender();
         document.getElementById("status").textContent = "Photon absorbed!";
 
+        // 3. Blink the porphyrin ring to show excitation
         for (const [visible, delay] of BLINK_SEQUENCE) {
           excitedRepr.setVisibility(visible);
           stage.viewer.requestRender();
