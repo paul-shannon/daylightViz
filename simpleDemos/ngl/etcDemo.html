@@ -138,12 +138,14 @@
       compE.setRotation([0, 270 * DEG, 40 * DEG]);
 
       // ── Sun + photon (both use sun.pdb – a single CU atom) ───────────────────
-      // All positions are in NGL molecular-coordinate space, the same system
-      // used by setPosition() on every other component.  No canvas-coordinate
-      // mapping is needed, so the photon always lands exactly on the CLA Mg.
+      // Use compA.getCenter() to find CLA's true world-space center so the
+      // photon lands exactly where the molecule appears, regardless of whether
+      // NGL auto-centers structures on load.
 
-      const SUN_POS  = [150,  90,  20];   // "off-stage" upper-right
-      const CLA_POS  = [ 20, -43, -53.8]; // must match compA.setPosition above
+      const claCtr  = compA.getCenter();
+      const CLA_POS = [claCtr.x, claCtr.y, claCtr.z];
+      // Sun lives above-right of CLA in world space
+      const SUN_POS = [CLA_POS[0] + 80, CLA_POS[1] + 70, CLA_POS[2] + 20];
 
       // Stationary sun: large warm-yellow sphere
       const compSun = await stage.loadFile(server + "sun.pdb");
@@ -218,7 +220,7 @@
         compPhoton.setPosition(SUN_POS);
         compPhoton.setVisibility(true);
         stage.viewer.requestRender();
-        await travelTo(compPhoton, SUN_POS, CLA_POS, 800);
+        await travelTo(compPhoton, SUN_POS, CLA_POS, 1500);
 
         // 2. Hide photon – it has been "absorbed"
         compPhoton.setVisibility(false);
