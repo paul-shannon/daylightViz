@@ -147,17 +147,17 @@
 
       // Stationary sun: large warm-yellow sphere
       const compSun = await stage.loadFile(server + "sun.pdb");
-      compSun.addRepresentation("spacefill", {
-        colorValue: "#yellow",
-        radiusScale: 8
+      compSun.addRepresentation("ball+stick", {
+        colorValue: "red",
+        radiusScale: 20
       });
       compSun.setPosition(SUN_POS);
 
       // Photon: smaller, brighter sphere – starts hidden at the sun
       const compPhoton = await stage.loadFile(server + "sun.pdb");
-      compPhoton.addRepresentation("spacefill", {
-        colorValue: "#yellow",
-        radiusScale: 1
+      compPhoton.addRepresentation("ball+stick", {
+        colorValue: "white",
+        radiusScale: 5
       });
       compPhoton.setPosition(SUN_POS);
       compPhoton.setVisibility(false);
