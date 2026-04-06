@@ -158,24 +158,23 @@
         [false,   0]   // relaxed – done
       ];
 
-      function firePhoton() {
+      function launchPhoton(msecs) {
+        return new Promise(resolve => setTimeout(resolve, msecs));
+      }
+
+      async function firePhoton() {
         const btn = document.getElementById("fireBtn");
         btn.disabled = true;
         document.getElementById("status").textContent = "Photon absorbed!";
 
-        let i = 0;
-        function step() {
-          if (i >= BLINK_SEQUENCE.length) {
-            document.getElementById("status").textContent = "Energy transferred";
-            btn.disabled = false;
-            return;
-          }
-          const [visible, delay] = BLINK_SEQUENCE[i++];
+        for (const [visible, delay] of BLINK_SEQUENCE) {
           excitedRepr.setVisibility(visible);
           stage.viewer.requestRender();
-          setTimeout(step, delay);
+          await launchPhoton(delay);
         }
-        step();
+
+        document.getElementById("status").textContent = "Energy transferred";
+        btn.disabled = false;
       }
 
       document.getElementById("fireBtn").addEventListener("click", firePhoton);
