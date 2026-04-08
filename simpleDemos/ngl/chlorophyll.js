@@ -54,12 +54,12 @@ export class Chlorophyll extends Molecule {
 
   // ── Overrides ──────────────────────────────────────────────────────────────
 
-  buildRepresentations(comp) {
+  buildRepresentations() {
     // Ground-state: element-coloured ball+stick, double bonds explicit
-    comp.addRepresentation("ball+stick", { multipleBond: "symmetric" });
+    this.component.addRepresentation("ball+stick", { multipleBond: "symmetric" });
 
     // Excited-state overlay: porphyrin ring, bright yellow, initially hidden
-    this._excitedRep = comp.addRepresentation("ball+stick", {
+    this._excitedRep = this.component.addRepresentation("ball+stick", {
       sele:         PORPHYRIN_RING_SELE,
       colorValue:   "#ffee22",
       opacity:      0.95,
@@ -68,10 +68,10 @@ export class Chlorophyll extends Molecule {
     });
   }
 
-  afterLoad(comp) {
+  afterLoad() {
     // Position matching the ETC demo (chlorophyll a sits offset from centre)
-    comp.setRotation([Math.PI / 4.4, 0, 0]);
-    comp.setPosition([20, -43, -53.8]);
+    this.component.setRotation([Math.PI / 4.4, 0, 0]);
+    this.component.setPosition([20, -43, -53.8]);
   }
 
   // ── Chlorophyll-specific behaviors ─────────────────────────────────────────
