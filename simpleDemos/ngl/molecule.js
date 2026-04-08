@@ -11,19 +11,19 @@
  *                if component exists but hidden: calls display().
  *
  * Subclass by overriding:
- *   buildRepresentations(comp)  – add NGL representations to the component.
- *   afterLoad(comp)             – position, rotate, post-load setup.
+ *   buildRepresentations()  – add NGL representations via this.component.
+ *   afterLoad()             – position, rotate, post-load setup via this.component.
  *
  * Usage
  * -----
  *   import { Molecule } from './molecule.js';
  *
  *   class MyMol extends Molecule {
- *     buildRepresentations(comp) {
- *       comp.addRepresentation("ball+stick");
+ *     buildRepresentations() {
+ *       this.component.addRepresentation("ball+stick");
  *     }
- *     afterLoad(comp) {
- *       comp.setPosition([10, 0, 0]);
+ *     afterLoad() {
+ *       this.component.setPosition([10, 0, 0]);
  *     }
  *   }
  *
@@ -46,21 +46,13 @@ export class Molecule {
 
   // ── Override in subclasses ─────────────────────────────────────────────────
 
-  /**
-   * Add NGL representations to the freshly loaded component.
-   * Called once per load / restore cycle, before afterLoad().
-   * Default: plain ball+stick.
-   */
-  buildRepresentations(comp) {
-    comp.addRepresentation("ball+stick", { multipleBond: "symmetric" });
+  /** Add NGL representations via this.component.  Default: plain ball+stick. */
+  buildRepresentations() {
+    this.component.addRepresentation("ball+stick", { multipleBond: "symmetric" });
   }
 
-  /**
-   * Called after representations are built.
-   * Use for setPosition, setRotation, extra setup, etc.
-   * Default: no-op.
-   */
-  afterLoad(comp) {}   // eslint-disable-line no-unused-vars
+  /** Position, rotate, or otherwise configure this.component after load.  Default: no-op. */
+  afterLoad() {}
 
   // ── Core behaviors ─────────────────────────────────────────────────────────
 
@@ -68,8 +60,8 @@ export class Molecule {
   async load() {
     if (this.component) return this.component;
     this.component = await this.stage.loadFile(this.url);
-    this.buildRepresentations(this.component);
-    this.afterLoad(this.component);
+    this.buildRepresentations();
+    this.afterLoad();
     this.stage.viewer.requestRender();
     return this.component;
   }
@@ -95,8 +87,8 @@ export class Molecule {
       return this.component;
     }
     this.component = await this.stage.loadFile(this.url);
-    this.buildRepresentations(this.component);
-    this.afterLoad(this.component);
+    this.buildRepresentations();
+    this.afterLoad();
     this.stage.viewer.requestRender();
     return this.component;
   }
