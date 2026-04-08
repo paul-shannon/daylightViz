@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>waitFor</title>
+    <script src="https://code.jquery.com/jquery-3.6.3.min.js"></script>
+<style>
+
+body{
+   margin: 100px;
+   margin-top: 30px;
+   font-family: "New York Times-Roman";
+   font-size: 22px;
+   height: 100%;
+   }
+
+</style>
+
+<script>
+$(document).ready(function(){
+  console.log("document ready")
+
+//const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+function longProcess(){
+   return new Promise(function(resolve, reject) {
+      //setTimeout(resolve, msecs)
+      var x = 0;
+      const loops = 100000
+      for(let i=0; i < loops; i++){
+        for(let j=0; j < loops; j++){
+           x = Math.log(i+1)
+           }
+        }
+      resolve()
+      }) // new Promise
+
+   } // wait
+//--------------------------------------------------------------------------------
+async function processItems(items) {
+
+  for (const item of items) {
+    console.log(`Processing: ${item}`);
+    await longProcess(); 
+    console.log(`Finished: ${item}`);
+    }
+
+  console.log(items.length + " items processed.");
+
+} // processItems
+//--------------------------------------------------------------------------------
+$("#runButton").on("click", async function(){
+    console.log("click")
+    await processItems(['A', 'B', 'C']);
+    })
+
+//--------------------------------------------------------------------------------
+});  // document ready
+
+</script>
+
+</head>
+<body>
+<h3>waitFor</h3>
+
+<button id="runButton">run waitFor test #1</button>
+
+
+</body>
+</html>

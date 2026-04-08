@@ -1,0 +1,120 @@
+r<!DOCTYPE html>
+<html>
+<head>
+  <title>etcNew</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      }
+    body {
+      background: white;
+      color: #ccc;
+      display: flex; height: 100vh;
+      font-family: "New York Times-Roman";
+      }
+    h3, h4{
+      color: black;
+      font-color: black;
+      }
+    #viewport {
+      flex: 1;
+        margin: 10px;
+        border: 1px solid gray;
+        border-radius: 10px;
+      }
+    button{
+       padding: 10px;
+       font-size: 18px;
+       background: white;
+       border: 1px solid gray;
+       border-radius: 8px;
+       }
+    .sidebar{
+        width: 200px;
+        background: #f5f5f5;
+        margin: 10px;
+        margin-right: 0px;
+        padding: 10px;
+        border: 1px solid gray;
+        border-radius: 10px;
+        }
+   
+  </style>
+  <script src="https://code.jquery.com/jquery-3.6.3.min.js"></script>
+  <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
+
+</head>
+
+<body>
+  <div class="sidebar">
+    <div><button id="chlorophyllButton">Photosystem II</button></div>
+    <div style="margin-top: 5px;"><button id="launchPhotonButton"> Launch Photon to Chlorophyll</button></div>
+    <div style="margin-top: 5px;"><button id="spinButton"> Spin</button></div>
+    <div style="margin-top: 20px;">
+       <h4> Electron Transport Chain</h4>
+    </div>
+    <div style="margin-top: 5px;"><button id="etcStep1-button">to Pheophytin</button></div>
+    <div style="margin-top: 5px;"><button id="etcStep2-button">to Plastoquinone</button></div>
+    <div style="margin-top: 5px;"><button id="etcStep3-button">to Cytochrome</button></div>
+    <div style="margin-top: 5px;"><button id="etcStep4-button">to Plastocyanin</button></div>
+    <div style="margin-top: 5px;"><button id="etcStep5-button">to PSI</button></div>
+
+    <div style="margin-top: 20px;"></div>
+    <div style="margin-top: 5px;"><button id="resetView-button">Reset View</button></div>
+    <div style="margin-top: 5px;"><button id="etcOnlyView-button">ETC View</button></div>
+  </div>
+  <div id="viewport"></div>
+</body>
+
+<script type="module">
+
+import {createMolecule} from './molecule.js';
+
+//---------------------------------------------------------------------------
+// define, create, initialize the basics
+//--------------------------------------
+
+    $("#lauchPhotonButton").attr('disabled', false);
+    $("#etcStep1-button").attr('disabled', true);
+    $("#etcStep2-button").attr('disabled', true);
+    $("#etcStep3-button").attr('disabled', true);
+    $("#etcStep4-button").attr('disabled', true);
+    $("#etcStep5-button").attr('disabled', true);
+
+    const server = "http://127.0.0.1:5519/pdb/"
+    var pdbA = "cla-no-tail.pdb"
+    var pdbB = "pheophytin-no-tail.pdb"
+    var pdbC = "p19-no-tail.pdb"
+    var pdbD = "cytochrome-bf6-heme-porphyrin.pdb"
+    var pdbE = "3BQV-plastocyanin.pdb"
+    var pdbSun = "sun.pdb"
+    var pdbPS1 = "7NHO.pdb"
+    var pdbPS2 = "1s5l.pdb"
+    
+    const DEG = Math.PI / 180;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      console.log("dom content loaded");
+      const stage = new NGL.Stage("viewport", { backgroundColor: "beige" });
+      window.stage = stage;
+      window.spinning = false;
+      stage.mouseControls.remove("clickPick-left");
+      window.addEventListener("resize", () => stage.handleResize());
+      const mol   = createMolecule(stage);
+      await mol.load();       // fetch & show
+      stage.autoView()
+      window.mol = mol
+      //mol.remove();           // drop from stage
+      //  await mol.restore();    // reload & show again
+      mol.component;          // raw NGL StructureComponent (or null)
+      mol.component._excitedRep;  // porphyrin excited-state overlay for animations
+      }) // DOMContentLoaded
+</script>
+
+//---------------------------------------------------------------------------
+
+</script>
+</html>
+  

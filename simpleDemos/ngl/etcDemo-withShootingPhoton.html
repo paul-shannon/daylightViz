@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Photosynthesis ETC – Porphyrin Blink Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #111; font-family: monospace; color: #ccc;
+           display: flex; height: 100vh; overflow: hidden; }
+
+    #sidebar {
+      width: 220px; flex-shrink: 0;
+      background: #1a1a2e; padding: 16px;
+      display: flex; flex-direction: column; gap: 12px;
+      overflow-y: auto;
+    }
+    #sidebar h2 { color: #7af; font-size: 13px; letter-spacing: 1px; }
+    #sidebar ul { padding-left: 16px; font-size: 11px; line-height: 1.8; color: #aaa; }
+    #sidebar li.active { color: #ff0; font-weight: bold; }
+    #sidebar li { list-style: disc; }
+
+    #fireBtn {
+      margin-top: auto;
+      padding: 10px;
+      background: #2a4a8a;
+      color: #fff;
+      border: 1px solid #4af;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    #fireBtn:hover { background: #3a6aaa; }
+    #fireBtn:disabled { background: #333; color: #666; border-color: #444; cursor: default; }
+
+    #status { font-size: 10px; color: #888; min-height: 14px; }
+
+    #viewport { flex: 1; }
+
+    /* ── Fixed overlay — sits above the WebGL canvas ── */
+    #overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      pointer-events: none;
+      z-index: 100;
+    }
+
+    /* ── Sun ── */
+    #sun {
+      position: absolute;
+      top: 18px; right: 18px;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #fff9d0 0%, #ffe040 45%, #ff9500 80%, transparent 100%);
+      box-shadow: 0 0 18px 8px rgba(255, 210, 0, 0.45),
+                  0 0 40px 18px rgba(255, 160, 0, 0.18);
+      animation: sunPulse 3s ease-in-out infinite;
+    }
+    @keyframes sunPulse {
+      0%, 100% { opacity: 0.85; transform: scale(1);   }
+      50%       { opacity: 1.00; transform: scale(1.18); }
+    }
+
+    /* ── Photon particle ── */
+    .photon {
+      position: absolute;
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: radial-gradient(circle, #fff 0%, #ffe000 55%, transparent 100%);
+      box-shadow: 0 0 10px 5px rgba(255, 230, 0, 0.95);
+    }
+  </style>
+
+  <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
+</head>
+
+<body>
+  <div id="sidebar">
+    <h2>PHOTOSYNTHESIS ETC</h2>
+    <ul>
+      <li class="active">Chlorophyll a (P680)</li>
+      <li>Pheophytin</li>
+      <li>Plastoquinone</li>
+      <li>Cyt b6f heme</li>
+      <li>Plastocyanin (Cu)</li>
+    </ul>
+    <div id="status">Loading...</div>
+    <button id="fireBtn" disabled>⚡ Fire Photon</button>
+  </div>
+
+  <div id="viewport"></div>
+  <!-- Fixed overlay above the WebGL canvas;
+       pointer-events:none lets mouse through -->
+  <div id="overlay">
+    <div id="sun"></div>
+  </div>
+
+  <script>
+    // PDB files live in ngl.js/examples/pdb/ relative to the repo root.
+    // Assumes a live-server is launched at the repo root (e.g. port 5500).
+    //const server = "/ngl.js/examples/pdb/";
+    const server = "http://127.0.0.1:5519/pdb/"
+
+    const DEG = Math.PI / 180;
+
+    // ── Porphyrin ring atom selection ────────────────────────────────────────
+    // The conjugated macrocycle consists of:
+    //   • Central Mg
+    //   • 4 methine bridge carbons:  CHA CHB CHC CHD
+    //   • 4 pyrrole N atoms:         NA  NB  NC  ND
+    //   • 4×4 pyrrole ring carbons:  C1A-C4A, C1B-C4B, C1C-C4C, C1D-C4D
+    //
+    // Atom names come directly from cla-no-tail.pdb (residue CLA A 348).
+    // Side-chain carbons (CMA/CMB/etc., CAB/CBB/etc.) are excluded here
+    // so only the pi-conjugated path is highlighted.
+    // NGL atom-name syntax: prefix each name with "." (dot notation).
+    // cla-no-tail.pdb already strips the phytol tail (those atoms are in REMARK
+    // lines, which NGL ignores), so every HETATM is part of the macrocycle or
+    // a short side-chain.  The dot-prefixed list below selects only the 24-atom
+    // conjugated ring + Mg, excluding methyl/vinyl side chains.
+    const PORPHYRIN_RING_SELE = [
+      "MG",
+      "CHA","CHB","CHC","CHD",
+      "NA","NB","NC","ND",
+      "C1A","C2A","C3A","C4A",
+      "C1B","C2B","C3B","C4B",
+      "C1C","C2C","C3C","C4C",
+      "C1D","C2D","C3D","C4D"
+    ].map(n => `.${n}`).join(" or ");
+
+    // ── Stage setup ──────────────────────────────────────────────────────────
+    document.addEventListener("DOMContentLoaded", async () => {
+      const stage = new NGL.Stage("viewport", { backgroundColor: "black" });
+      window.stage = stage;
+      stage.mouseControls.remove("clickPick-left");
+      window.addEventListener("resize", () => stage.handleResize());
+
+      // ── Load the five ETC molecules ────────────────────────────────────────
+      const compA = await stage.loadFile(server + "cla-no-tail.pdb");
+      // Base representation: element-coloured ball+stick, multipleBond shows
+      // the conjugated double bonds in the porphyrin ring explicitly.
+      compA.addRepresentation("ball+stick", { multipleBond: "symmetric" });
+      compA.setRotation([Math.PI / 4.4, 0, 0]);
+      compA.setPosition([20, -43, -53.8]);
+
+      // ── Excited-state overlay for the porphyrin ring ─────────────────────
+      // A second "ball+stick" representation covers only the macrocycle atoms
+      // and is initially hidden.  We flash it on/off to simulate photon capture.
+      //
+      // KEY API FACTS:
+      //   addRepresentation() returns a RepresentationComponent with:
+      //     .setVisibility(bool)          – show/hide without rebuilding geometry
+      //     .setParameters({...})         – update colorValue, opacity, etc.
+      //   stage.viewer.requestRender()    – force a redraw after programmatic changes
+      //
+      // "visible" is NOT a valid addRepresentation param — NGL ignores it.
+      // Create the repr visible, then immediately call setVisibility(false).
+      const excitedRepr = compA.addRepresentation("ball+stick", {
+        sele: PORPHYRIN_RING_SELE,
+        colorValue: "#ffee22",   // bright excited-state yellow
+        multipleBond: "symmetric"
+      });
+      excitedRepr.setVisibility(false);   // hide now that geometry is built
+      stage.viewer.requestRender();
+      window.excitedRepr = excitedRepr;   // expose for console experiments
+
+      const compB = await stage.loadFile(server + "pheophytin-no-tail.pdb");
+      compB.addRepresentation("ball+stick");
+      compB.setRotation([-Math.PI / 8, -Math.PI / 4, 0]);
+      compB.setPosition([0, 0, 2.12]);
+
+      const compC = await stage.loadFile(server + "p19-no-tail.pdb");
+      compC.addRepresentation("ball+stick");
+      compC.setRotation([-37 * DEG, 120 * DEG, 20 * DEG]);
+      compC.setPosition([16, -20, 15]);
+
+      const compD = await stage.loadFile(server + "cytochrome-bf6-heme-porphyrin.pdb");
+      compD.addRepresentation("ball+stick");
+      compD.setPosition([-147, -205, -178]);
+      compD.setRotation([0, -70 * DEG, -10 * DEG]);
+
+      const compE = await stage.loadFile(server + "3BQV-plastocyanin.pdb");
+      compE.addRepresentation("ribbon", { color: "residueIndex" });
+      compE.addRepresentation("spacefill", { sele: "CU" });
+      compE.setPosition([40, -80, 8]);
+      compE.setRotation([0, 270 * DEG, 40 * DEG]);
+
+      // Expose globals for console use
+      window.A = compA; window.B = compB; window.C = compC;
+      window.D = compD; window.E = compE;
+
+      stage.autoView();
+
+      // ── Camera helpers ────────────────────────────────────────────────────
+      // NGL stores the whole scene transform (translation + scale that embodies
+      // pan & zoom) as a Matrix4, accessible via:
+      //
+      //   stage.viewerControls.getOrientation()  → Matrix4 (current)
+      //   stage.animationControls.orient(m, ms)  → animate to Matrix4 m
+      //   component.autoView(0)                  → INSTANT snap to fit component
+      //
+      // Trick for "partial zoom toward A while keeping B visible":
+      //   1. snapshot current orientation
+      //   2. instant-snap to A → capture that matrix → restore
+      //   3. element-lerp the two matrices at t = blend (0=full scene, 1=full A)
+      //   4. animate to the blended matrix
+
+      document.getElementById("status").textContent = "Ready";
+      document.getElementById("fireBtn").disabled = false;
+
+      // Capture the full-scene orientation once autoView has settled.
+      let fullOrient = null;
+      setTimeout(() => {
+        fullOrient = stage.viewerControls.getOrientation().clone();
+      }, 50);
+
+      function blendOrient(from, to, t) {
+        // Element-wise lerp of two Matrix4 objects.
+        // Safe as long as there's no rotation change between states, which is
+        // true here (we never rotate, only pan/zoom).
+        const result = from.clone();
+        const fe = from.elements, te = to.elements, re = result.elements;
+        for (let i = 0; i < 16; i++) re[i] = fe[i] + (te[i] - fe[i]) * t;
+        return result;
+      }
+
+      function zoomToward(comp, blend, duration) {
+        // Save where we are now
+        const cur = stage.viewerControls.getOrientation().clone();
+        // Instantly snap to fit comp → read that matrix → restore instantly
+        comp.autoView(0);
+        const focused = stage.viewerControls.getOrientation().clone();
+        stage.viewerControls.orient(cur);
+        // Animate smoothly to the blended target
+        stage.animationControls.orient(blendOrient(cur, focused, blend), duration);
+      }
+
+      // ── Photon particle ───────────────────────────────────────────────────
+      // The NGL WebGL canvas creates a GPU compositing layer that sits above
+      // any sibling DOM elements regardless of z-index.  The only reliable way
+      // to draw on top of it is to use a position:fixed overlay (#overlay)
+      // that is a child of <body>, not of #viewport.
+      //
+      // All coordinates here are in page (fixed) space.
+      function launchPhoton(travelMs, callback) {
+        const overlay = document.getElementById("overlay");
+        const sun     = document.getElementById("sun");
+        const vp      = document.getElementById("viewport");
+        const sunR    = sun.getBoundingClientRect();
+        const vpR     = vp.getBoundingClientRect();
+
+        // Sun centre in page coords
+        const startX = sunR.left + sunR.width  / 2;
+        const startY = sunR.top  + sunR.height / 2;
+
+        // Target: centre of the NGL viewport in page coords
+        //const endX = vpR.left + vpR.width  / 2;
+        // const endY = 210; //vpR.top  + vpR.height / 2;
+        const endX = 99;
+        const endY = 441;
+        console.log("photon destination: " + endX + ", " + endY)
+
+        const half = 4.5;
+        const p = document.createElement("div");
+        p.className = "photon";
+        p.style.left    = (startX - half) + "px";
+        p.style.top     = (startY - half) + "px";
+        p.style.opacity = "1";
+        p.style.transition =
+          `top ${travelMs}ms cubic-bezier(.4,0,.2,1),` +
+          `left ${travelMs}ms cubic-bezier(.4,0,.2,1),` +
+          `opacity 0.15s ease`;
+        overlay.appendChild(p);
+
+        // Double-rAF ensures the browser has painted the initial position
+        // before the transition target is set.
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          p.style.left = (endX - half) + "px";
+          p.style.top  = (endY - half) + "px";
+          setTimeout(() => {
+            p.style.opacity = "0";
+            setTimeout(() => { p.remove(); callback(); }, 160);
+          }, travelMs);
+        }));
+      }
+
+      // ── Photon-capture animation ───────────────────────────────────────────
+      // BLINK_SEQUENCE entries: [visible, durationMs]
+      const BLINK_SEQUENCE = [
+        [true,  300],  // photon absorbed → excited state
+        [false, 150],  // brief dark
+        [true,  300],  // vibrational re-excitation
+        [false, 150],
+        [true,  500],  // longer excited state (energy trapped)
+        [false,   0]   // relaxed – done
+      ];
+
+      function firePhoton() {
+        const btn = document.getElementById("fireBtn");
+        btn.disabled = true;
+        document.getElementById("status").textContent = "Photon incoming…";
+
+        // Camera zooms toward CLA while the photon travels
+        // zoomToward(compA, 0.65, 500);
+
+        // Photon flies from sun to molecule over stated duration
+        launchPhoton(4450, () => {
+          document.getElementById("status").textContent = "Photon absorbed!";
+          let i = 0;
+          function step() {
+            if (i >= BLINK_SEQUENCE.length) {
+              document.getElementById("status").textContent = "Energy transferred";
+              if (fullOrient) stage.animationControls.orient(fullOrient, 700);
+              btn.disabled = false;
+              return;
+            }
+            const [visible, delay] = BLINK_SEQUENCE[i++];
+            excitedRepr.setVisibility(visible);
+            stage.viewer.requestRender();
+            setTimeout(step, delay);
+          }
+          step();
+        });
+      }
+
+      document.getElementById("fireBtn").addEventListener("click", firePhoton);
+
+      // ── Click-to-inspect ───────────────────────────────────────────────────
+      stage.signals.clicked.add(function (proxy) {
+        if (proxy && proxy.atom) {
+          const a = proxy.atom;
+          console.log(`Atom: ${a.atomname}  Residue: ${a.resname} ${a.resno}  Chain: ${a.chainname}`);
+        }
+      });
+
+      const canvas = stage.viewer.renderer.domElement;
+      window.canvas = canvas;
+      canvas.addEventListener('click', function(event){
+         const rect = canvas.getBoundingClientRect();
+         const x = event.clientX - rect.left;
+         const y = event.clientY - rect.top;
+         console.log('Canvas coords:', x, y);
+         }); // click
+      stage.signals.clicked.add(function (pickingProxy) {
+        if (pickingProxy && pickingProxy.atom){
+          console.log("Coordinates:", pickingProxy.position);
+          }
+         }); // add
+
+    }); // DOMContentLoaded
+
+     function oldgetCanvasCoordinates(stage, canvas, position) {
+        const vector = new NGL.Vector3(position.x, position.y, position.z);
+        vector.project(stage.viewer.camera);
+        const x = (vector.x + 1) * canvas.width / 2;
+        const y = (-vector.y + 1) * canvas.height / 2;
+        return {x, y};
+        }
+function getCanvasCoordinates(stage, position) {
+    const vector = new NGL.Vector3(position.x, position.y, position.z);
+    
+    // Project 3D -> Normalized Device Coordinates (-1 to 1)
+    vector.project(stage.viewer.camera);
+    
+    // Map NDC -> Pixel Coordinates
+    return {
+        x: (vector.x + 1) * overlay.width / 2,
+        y: (-vector.y + 1) * overlay.height / 2
+    };
+}
+
+
+
+  </script>
+</body>
+</html>

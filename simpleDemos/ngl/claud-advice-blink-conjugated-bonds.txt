@@ -1,0 +1,75 @@
+returning to ngl.js.  simpleDemos/ngl/etcDemo.html shows key members
+of photosynthesis electron transport chain.  i wish to simulate photon
+capture by "blinking" the conjugated bonds in the porphyrin ring.  how
+to select and modify the ngl.js representation of those bonds?  see
+simpleDemos/ngl/etcDemo.html
+
+Here's how porphyrin ring selection and animation works in NGL.js, based on the actual atom names from `cla-no-tail.pdb`:
+
+---
+
+## Selecting porphyrin ring bonds
+
+The macrocycle's conjugated π-system consists of these named atoms in the `CLA` residue:
+
+| Group | Atoms |
+|---|---|
+| Central metal | `MG` |
+| Methine bridges | `CHA CHB CHC CHD` |
+| Pyrrole nitrogens | `NA NB NC ND` |
+| Pyrrole ring carbons | `C1A–C4A`, `C1B–C4B`, `C1C–C4C`, `C1D–C4D` |
+
+NGL selection string:
+```javascript
+"name MG or name CHA or name CHB or ... or name C4D"
+```
+Side-chain atoms (`CMA`, `CAB`, `CBB`, etc.) are *excluded* so only the conjugated path lights up.
+
+## Animating the bonds
+
+The key API pattern:
+
+```javascript
+// 1. Add a hidden excited-state overlay (same atoms, bright color)
+const excitedRepr = compA.addRepresentation("ball+stick", {
+  sele: PORPHYRIN_RING_SELE,
+  colorValue: "#ffee22",
+  multipleBond: "symmetric",  // shows conjugated double bonds explicitly
+  visible: false              // hidden until photon fires
+});
+
+// 2. Blink it on/off — NGL redraws on each setVisibility call
+excitedRepr.setVisibility(true);
+stage.viewer.requestRender();
+// ...later:
+excitedRepr.setVisibility(false);
+
+// 3. Alternatively, change the color of an existing repr:
+excitedRepr.setParameters({ colorValue: "#ff0000" });
+stage.viewer.requestRender();
+```
+
+The demo at `simpleDemos/ngl/etcDemo.html` fires a timed blink
+sequence (on 90ms → off 60ms → on 90ms → on 200ms → off) when you
+click "Fire Photon". Serve the repo root with a live server (e.g. port
+5500) and open the file.
+
+
+// 1. Add a hidden excited-state overlay (same atoms, bright color)
+const excitedRepr = compA.addRepresentation("ball+stick", {
+  sele: PORPHYRIN_RING_SELE,
+  colorValue: "#ffee22",
+  multipleBond: "symmetric",  // shows conjugated double bonds explicitly
+  visible: false              // hidden until photon fires
+});
+
+// 2. Blink it on/off — NGL redraws on each setVisibility call
+excitedRepr.setVisibility(true);
+stage.viewer.requestRender();
+// ...later:
+excitedRepr.setVisibility(false);
+
+// 3. Alternatively, change the color of an existing repr:
+excitedRepr.setParameters({ colorValue: "#ff0000" });
+stage.viewer.requestRender();
+

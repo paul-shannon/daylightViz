@@ -48,6 +48,7 @@ export class Molecule {
 
   /** Add NGL representations via this.component.  Default: plain ball+stick. */
   buildRepresentations() {
+    console.log(" ---  molecule::buildRepresentations")
     this.component.addRepresentation("ball+stick", { multipleBond: "symmetric" });
   }
 
@@ -58,20 +59,23 @@ export class Molecule {
 
   /** Fetch PDB, build reps, run afterLoad.  Idempotent. */
   async load() {
+    console.log("--- entering molecule::load")
     if (this.component) return this.component;
     this.component = await this.stage.loadFile(this.url);
-    this.buildRepresentations();
-    this.afterLoad();
-    this.stage.viewer.requestRender();
     return this.component;
-  }
+    }
 
-  /** Make the component visible. */
-  display() {
+  show() {
     if (!this.component) return;
     this.component.setVisibility(true);
     this.stage.viewer.requestRender();
-  }
+    }
+
+  hide() {
+    if (!this.component) return;
+    this.component.setVisibility(false);
+    this.stage.viewer.requestRender();
+    }
 
   /** Fully remove from stage and free GPU geometry. */
   remove() {

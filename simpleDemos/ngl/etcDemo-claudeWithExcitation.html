@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Photosynthesis ETC – Porphyrin Blink Demo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #111; font-family: monospace; color: #ccc;
+           display: flex; height: 100vh; overflow: hidden; }
+
+    #sidebar {
+      width: 220px; flex-shrink: 0;
+      background: #1a1a2e; padding: 16px;
+      display: flex; flex-direction: column; gap: 12px;
+      overflow-y: auto;
+    }
+    #sidebar h2 { color: #7af; font-size: 13px; letter-spacing: 1px; }
+    #sidebar ul { padding-left: 16px; font-size: 11px; line-height: 1.8; color: #aaa; }
+    #sidebar li.active { color: #ff0; font-weight: bold; }
+    #sidebar li { list-style: disc; }
+
+    #fireBtn {
+      margin-top: auto;
+      padding: 10px;
+      background: #2a4a8a;
+      color: #fff;
+      border: 1px solid #4af;
+      border-radius: 4px;
+      cursor: pointer;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    #fireBtn:hover { background: #3a6aaa; }
+    #fireBtn:disabled { background: #333; color: #666; border-color: #444; cursor: default; }
+
+    #status { font-size: 24px; color: #888; min-height: 14px; }
+
+    #viewport { flex: 1; }
+  </style>
+
+  <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
+</head>
+
+<body>
+  <div id="sidebar">
+    <h2>PHOTOSYNTHESIS ETC</h2>
+    <ul>
+      <li class="active">Chlorophyll a (P680)</li>
+      <li>Pheophytin</li>
+      <li>Plastoquinone</li>
+      <li>Cyt b6f heme</li>
+      <li>Plastocyanin (Cu)</li>
+    </ul>
+    <div id="status">Loading...</div>
+    <button id="fireBtn" disabled>⚡ Fire Photon</button>
+  </div>
+
+  <div id="viewport"></div>
+
+  <script>
+    // PDB files live in ngl.js/examples/pdb/ relative to the repo root.
+    // Assumes a live-server is launched at the repo root (e.g. port 5500).
+    //const server = "/ngl.js/examples/pdb/";
+    const server = "http://127.0.0.1:5519/pdb/"
+    const DEG = Math.PI / 180;
+
+    // ── Porphyrin ring atom selection ────────────────────────────────────────
+    // The conjugated macrocycle consists of:
+    //   • Central Mg
+    //   • 4 methine bridge carbons:  CHA CHB CHC CHD
+    //   • 4 pyrrole N atoms:         NA  NB  NC  ND
+    //   • 4×4 pyrrole ring carbons:  C1A-C4A, C1B-C4B, C1C-C4C, C1D-C4D
+    //
+    // Atom names come directly from cla-no-tail.pdb (residue CLA A 348).
+    // Side-chain carbons (CMA/CMB/etc., CAB/CBB/etc.) are excluded here
+    // so only the pi-conjugated path is highlighted.
+    // NGL atom-name syntax: prefix each name with "." (dot notation).
+    // cla-no-tail.pdb already strips the phytol tail (those atoms are in REMARK
+    // lines, which NGL ignores), so every HETATM is part of the macrocycle or
+    // a short side-chain.  The dot-prefixed list below selects only the 24-atom
+    // conjugated ring + Mg, excluding methyl/vinyl side chains.
+    const PORPHYRIN_RING_SELE = [
+      "MG",
+      "CHA","CHB","CHC","CHD",
+      "NA","NB","NC","ND",
+      "C1A","C2A","C3A","C4A",
+      "C1B","C2B","C3B","C4B",
+      "C1C","C2C","C3C","C4C",
+      "C1D","C2D","C3D","C4D"
+    ].map(n => `.${n}`).join(" or ");
+
+    // ── Stage setup ──────────────────────────────────────────────────────────
+    document.addEventListener("DOMContentLoaded", async () => {
+      const stage = new NGL.Stage("viewport", { backgroundColor: "beige" });
+      window.stage = stage;
+      stage.mouseControls.remove("clickPick-left");
+      window.addEventListener("resize", () => stage.handleResize());
+
+      // ── Load the five ETC molecules ────────────────────────────────────────
+      const compA = await stage.loadFile(server + "cla-no-tail.pdb");
+      // Base representation: element-coloured ball+stick, multipleBond shows
+      // the conjugated double bonds in the porphyrin ring explicitly.
+      compA.addRepresentation("ball+stick", { multipleBond: "symmetric" });
+      compA.setRotation([Math.PI / 4.4, 0, 0]);
+      compA.setPosition([20, -43, -53.8]);
+
+      // ── Excited-state overlay for the porphyrin ring ─────────────────────
+      // A second "ball+stick" representation covers only the macrocycle atoms
+      // and is initially hidden.  We flash it on/off to simulate photon capture.
+      //
+      // KEY API FACTS:
+      //   addRepresentation() returns a RepresentationComponent with:
+      //     .setVisibility(bool)          – show/hide without rebuilding geometry
+      //     .setParameters({...})         – update colorValue, opacity, etc.
+      //   stage.viewer.requestRender()    – force a redraw after programmatic changes
+      //
+      // "visible" is NOT a valid addRepresentation param — NGL ignores it.
+      // Create the repr visible, then immediately call setVisibility(false).
+      const excitedRepr = compA.addRepresentation("ball+stick", {
+        sele: PORPHYRIN_RING_SELE,
+        colorValue: "red", // "#ffee22",   // bright excited-state yellow
+        multipleBond: "symmetric"
+      });
+      excitedRepr.setVisibility(false);   // hide now that geometry is built
+      stage.viewer.requestRender();
+      window.excitedRepr = excitedRepr;   // expose for console experiments
+
+      const compB = await stage.loadFile(server + "pheophytin-no-tail.pdb");
+      compB.addRepresentation("ball+stick");
+      compB.setRotation([-Math.PI / 8, -Math.PI / 4, 0]);
+      compB.setPosition([0, 0, 2.12]);
+
+      const compC = await stage.loadFile(server + "p19-no-tail.pdb");
+      compC.addRepresentation("ball+stick");
+      compC.setRotation([-37 * DEG, 120 * DEG, 20 * DEG]);
+      compC.setPosition([16, -20, 15]);
+
+      const compD = await stage.loadFile(server + "cytochrome-bf6-heme-porphyrin.pdb");
+      compD.addRepresentation("ball+stick");
+      compD.setPosition([-147, -205, -178]);
+      compD.setRotation([0, -70 * DEG, -10 * DEG]);
+
+      const compE = await stage.loadFile(server + "3BQV-plastocyanin.pdb");
+      compE.addRepresentation("ribbon", { color: "residueIndex" });
+      compE.addRepresentation("spacefill", { sele: "CU" });
+      compE.setPosition([40, -80, 8]);
+      compE.setRotation([0, 270 * DEG, 40 * DEG]);
+
+      // Expose globals for console use
+      window.A = compA; window.B = compB; window.C = compC;
+      window.D = compD; window.E = compE;
+
+      stage.autoView();
+
+      document.getElementById("status").textContent = "Ready";
+      document.getElementById("fireBtn").disabled = false;
+
+      // ── Photon-capture animation ───────────────────────────────────────────
+      // Blink sequence: simulates photon absorption → excited state → relaxation.
+      // Each entry is [visible, durationMs].
+      const BLINK_SEQUENCE = [
+        [true,  300],  // photon absorbed → excited state
+        [false, 150],  // brief dark
+        [true,  300],  // vibrational re-excitation
+        [false, 150],
+        [true,  500],  // longer excited state (energy trapped)
+        [false,   0]   // relaxed – done
+      ];
+
+      function firePhoton() {
+        const btn = document.getElementById("fireBtn");
+        btn.disabled = true;
+        document.getElementById("status").textContent = "Photon absorbed!";
+
+        let i = 0;
+        function step() {
+          if (i >= BLINK_SEQUENCE.length) {
+            document.getElementById("status").textContent = "Energy transferred";
+            btn.disabled = false;
+            return;
+          }
+          const [visible, delay] = BLINK_SEQUENCE[i++];
+          excitedRepr.setVisibility(visible);
+          stage.viewer.requestRender();
+          setTimeout(step, delay);
+        }
+        step();
+      }
+
+      document.getElementById("fireBtn").addEventListener("click", firePhoton);
+
+      // ── Click-to-inspect ───────────────────────────────────────────────────
+      stage.signals.clicked.add(function (proxy) {
+        if (proxy && proxy.atom) {
+          const a = proxy.atom;
+          console.log(`Atom: ${a.atomname}  Residue: ${a.resname} ${a.resno}  Chain: ${a.chainname}`);
+        }
+      });
+    }); // DOMContentLoaded
+  </script>
+</body>
+</html>

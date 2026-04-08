@@ -1,0 +1,431 @@
+r<!DOCTYPE html>
+<html>
+<head>
+  <title>etcShow</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      }
+    body {
+      background: white;
+      color: #ccc;
+      display: flex; height: 100vh;
+      font-family: "New York Times-Roman";
+      }
+    h3, h4{
+      color: black;
+      font-color: black;
+      }
+    #viewport {
+      flex: 1;
+        margin: 10px;
+        border: 1px solid gray;
+        border-radius: 10px;
+      }
+    button{
+       padding: 10px;
+       font-size: 18px;
+       background: white;
+       border: 1px solid gray;
+       border-radius: 8px;
+       }
+    .sidebar{
+        width: 200px;
+        background: #f5f5f5;
+        margin: 10px;
+        margin-right: 0px;
+        padding: 10px;
+        border: 1px solid gray;
+        border-radius: 10px;
+        }
+   
+  </style>
+  <script src="https://code.jquery.com/jquery-3.6.3.min.js"></script>
+  <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
+</head>
+
+<body>
+  <div class="sidebar">
+    <div><button id="launchPhotonButton"> Launch Photon</button></div>
+    <div style="margin-top: 20px;">
+       <h4> Electron Transport Chain</h4>
+    </div>
+    <div style="margin-top: 5px;"><button id="etcStep1-button"> Step 1</button></div>
+    <div style="margin-top: 5px;"><button id="etcStep2-button"> Step 2</button></div>
+    <div style="margin-top: 5px;"><button id="etcStep3-button"> Step 3</button></div>
+    <div style="margin-top: 5px;"><button id="etcStep4-button"> Step 4</button></div>
+    <div style="margin-top: 5px;"><button id="etcStep5-button"> Step 5</button></div>
+
+    <div style="margin-top: 20px;"></div>
+    <div style="margin-top: 5px;"><button id="resetView-button">Reset View</button></div>
+    <div style="margin-top: 5px;"><button id="etcOnlyView-button">ETC View</button></div>
+  </div>
+  <div id="viewport"></div>
+  <script>
+
+    $("#lauchPhotonButton").attr('disabled', false);
+    $("#etcStep1-button").attr('disabled', true);
+    $("#etcStep2-button").attr('disabled', true);
+    $("#etcStep3-button").attr('disabled', true);
+    $("#etcStep4-button").attr('disabled', true);
+
+    const server = "http://127.0.0.1:5519/pdb/"
+    var pdbA = "cla-no-tail.pdb"
+    var pdbB = "pheophytin-no-tail.pdb"
+    var pdbC = "p19-no-tail.pdb"
+    var pdbD = "cytochrome-bf6-heme-porphyrin.pdb"
+    var pdbE = "3BQV-plastocyanin.pdb"
+    var pdbSun = "sun.pdb"
+    var pdbPS2 = "7NHO.pdb"
+    
+    const DEG = Math.PI / 180;
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const stage = new NGL.Stage("viewport", { backgroundColor: "beige" });
+      window.stage = stage;
+      stage.mouseControls.remove("clickPick-left");
+      window.addEventListener("resize", () => stage.handleResize());
+
+      const compA = await stage.loadFile(server + pdbA);
+      compA.addRepresentation("ball+stick");
+
+      const PORPHYRIN_RING_A = ["MG", "CHA","CHB","CHC","CHD", "NA","NB","NC","ND", "C1A","C2A","C3A",
+                              "C4A", "C1B","C2B","C3B","C4B", "C1C","C2C","C3C","C4C", "C1D","C2D",
+                              "C3D","C4D"].map(n => `.${n}`).join(" or ");
+      const excitedRepA = compA.addRepresentation("spaceFill", {
+        sele: PORPHYRIN_RING_A,
+        colorValue: "#ffee22",   // bright excited-state yellow
+        multipleBond: "symmetric"
+        });
+
+      excitedRepA.setVisibility(false);   // hide now that geometry is built
+      window.excitedRepA = excitedRepA;
+
+        
+      compA.setRotation([Math.PI/4.4, 0, 0]);
+      compA.setPosition ([20,   -43,   -53.8])
+
+      const compB = await stage.loadFile(server + pdbB)
+      compB.addRepresentation("ball+stick");
+      compB.setRotation([-Math.PI/8,-Math.PI/4, 0])
+      compB.setPosition( [0,       0,  2.12])
+
+      const excitedRepB = compB.addRepresentation("spaceFill", {
+        sele: PORPHYRIN_RING_A,
+        colorValue: "#ffee22",   // bright excited-state yellow
+        multipleBond: "symmetric"
+        });
+      excitedRepB.setVisibility(false);   // hide now that geometry is built
+      window.excitedRepB = excitedRepB;
+
+      const compC = await stage.loadFile(server + pdbC)
+      compC.addRepresentation("ball+stick");
+      compC.setRotation([-37*DEG,120*DEG,20*DEG])
+      compC.setPosition([16,-20,15])
+
+      const PORPHYRIN_RING_C =
+         ["C1", "C2", "C3", "C4", "C5", "C6"].map(n => `.${n}`).join(" or ");
+      const excitedRepC = compC.addRepresentation("spaceFill", {
+        sele: PORPHYRIN_RING_C,
+        colorValue: "#ffee22",   // bright excited-state yellow
+        multipleBond: "symmetric"
+        });
+
+      excitedRepC.setVisibility(false);   // hide now that geometry is built
+      window.excitedRepC = excitedRepC;
+
+      const compD = await stage.loadFile(server + pdbD)
+      compD.addRepresentation("ball+stick")
+      compD.setPosition([-147, -205, -178])
+      compD.setRotation([0, -70*DEG, -10*DEG])
+
+      const compE = await stage.loadFile(server + pdbE)
+      compE.addRepresentation("ribbon", {color: "residueIndex"})
+      window.cu = compE.addRepresentation("spacefill",
+                                          {sele: "CU",
+                                          radiusScale: 1})
+                                          //color: "yellow"})
+
+      compE.setPosition([40,-80,8])        
+      compE.setRotation([0*DEG, 270*DEG, 40*DEG])
+
+      const excitedRepD = compD.addRepresentation("spaceFill", {
+        sele: PORPHYRIN_RING_A,
+        colorValue: "#ffee22",   // bright excited-state yellow
+        multipleBond: "symmetric"
+        });
+      excitedRepD.setVisibility(false);   // hide now that geometry is built
+      window.excitedRepD = excitedRepD;
+
+      excitedRepE = compE.addRepresentation("spacefill",
+                                            {sele: "CU",
+                                            radiusScale: 3,
+                                            color: "yellow"})
+      excitedRepE.setVisibility(false)
+
+      const compSun = await stage.loadFile(server + pdbSun)
+      compSun.addRepresentation("spacefill",
+                                {color: "red",
+                                 radiusScale: 2})
+      compSun.setPosition([100,0,0])     
+
+      compPS2 = await stage.loadFile(server + pdbPS2);
+      //compPS2.addRepresentation("spaceFill", {color: "residueIndex"})
+      //window.ps2 = compPS2
+      //ps2.setPosition([-360,-220,-60])
+
+      stage.autoView();
+      initialView = stage.viewerControls.getOrientation()
+      window.initialView = initialView
+    
+      window.A = compA;
+      window.B = compB;
+      window.C = compC;
+      window.D = compD;
+      window.E = compE;
+      window.sun = compSun;
+
+
+      const canvas = stage.viewer.renderer.domElement;
+      canvas.addEventListener('click', function(event){
+         const rect = canvas.getBoundingClientRect();
+         const x = event.clientX - rect.left;
+         const y = event.clientY - rect.top;
+         console.log('Canvas coords:', x, y);
+         }); // click
+      stage.signals.clicked.add(function (pickingProxy) {
+        if (pickingProxy && pickingProxy.atom){
+          console.log("Coordinates:", pickingProxy.position);
+          }
+         }); // add
+
+      $("#launchPhotonButton").on('click', function(){
+         photonTravel(sun, {x: 40.5, y: -11.7}, absorbPhoton)
+         $("#etcStep1-button").attr('disabled', false);
+         $("#etcStep2-button").attr('disabled', true);
+         $("#etcStep3-button").attr('disabled', true);
+         $("#etcStep4-button").attr('disabled', true);
+         })
+
+      $("#etcStep1-button").on('click', function(){
+         console.log("transport electron button")
+         excitedRepA.setVisibility(false);
+         excitedRepB.setVisibility(true);
+         $("#etcStep1-button").attr('disabled', true);
+         $("#etcStep2-button").attr('disabled', false);
+         $("#etcStep3-button").attr('disabled', true);
+         $("#etcStep4-button").attr('disabled', true);
+
+
+         })
+
+      $("#etcStep2-button").on('click', function(){
+         console.log("transport electron button")
+         excitedRepB.setVisibility(false);
+         excitedRepC.setVisibility(true);
+         $("#etcStep1-button").attr('disabled', true);
+         $("#etcStep2-button").attr('disabled', true);
+         $("#etcStep3-button").attr('disabled', false);
+         $("#etcStep4-button").attr('disabled', true);
+         })
+
+      $("#etcStep3-button").on('click', function(){
+         console.log("transport electron button")
+         excitedRepC.setVisibility(false);
+         excitedRepD.setVisibility(true);
+         $("#etcStep1-button").attr('disabled', true);
+         $("#etcStep2-button").attr('disabled', true);
+         $("#etcStep3-button").attr('disabled', true);
+         $("#etcStep4-button").attr('disabled', false);
+         })
+
+      $("#etcStep4-button").on('click', function(){
+         console.log("transport electron button")
+         excitedRepD.setVisibility(false);
+         excitedRepE.setVisibility(true);
+         })
+
+      $("#etcStep5-button").on('click', function(){
+         compPS2.addRepresentation("spaceFill", {color: "residueIndex"})
+         window.ps2 = compPS2;
+         ps2.setPosition([-360,-220,-60])
+         excitedRepE.setVisibility(true);
+         stage.autoView(2000)
+         function finalView(){E.autoView(2000)}
+         plastoCyaninTravel(finalView)
+
+         //compE.setPosition([40,-80,8])        
+         //compE.setPosition([-60,-80,8]) 
+         })
+
+      $("#resetView-button").on('click', function(){
+        excitedRepB.setVisibility(false);
+        excitedRepC.setVisibility(false);
+        excitedRepD.setVisibility(false);
+        excitedRepE.setVisibility(false);
+
+        stage.viewerControls.orient(initialView)
+        compA.setPosition ([20,   -43,   -53.8])
+        compB.setPosition( [0,       0,  2.12])
+        compC.setPosition([16,-20,15])
+        compD.setPosition([-147, -205, -178])
+        compE.setPosition([40,-80,8])        
+        compSun.setPosition([100,0,0])
+        compSun.setVisibility(true)
+        compPS2.setPosition([-360,-220,-60])
+        stage.autoView()
+         })
+
+     $("#etcOnlyView-button").on('click', function(){
+        compSun.setPosition([100,0,0])
+        compSun.setVisibility(true)
+        stage.animationControls.zoomMove(C.getCenter(),-175,2000)
+        })
+
+    //------------------------------------------------------------
+    function photonTravel(comp, destination, nextOperation){
+       let mFrame = 0;
+       const mSteps = 100
+       startX = comp.getCenter().x + 0; // 0
+       startY = comp.getCenter().y - 18.2;// 0
+       endX = destination.x
+       endY = destination.y
+       deltaX = (endX - startX)/mSteps;
+       deltaY = (endY - startY)/mSteps;
+       var i = 0;
+       function step() {
+          if (i >= mSteps) {
+            complete = true;
+            nextOperation()
+            return;
+            }
+          else {
+             const newX = startX + (i * deltaX)
+             const newY = startY + (i * deltaY)
+             comp.setPosition([newX, newY, 0]);
+             stage.viewer.requestRender();
+             setTimeout(step, 20);
+             i++;
+             } // else
+           } // function step
+        step()
+
+        console.log("--- leaving photonTravel")
+        } // photonTravel
+    //------------------------------------------------------------
+     window.photonTravel = photonTravel;
+
+
+    //------------------------------------------------------------
+    function plastoCyaninTravel(nextOperation){ //destination, nextOperation){
+       const comp = compE;
+       const destination = {x:552, y:468}
+       let mFrame = 0;
+       const mSteps = 100
+       startX = 35
+       startY = -80
+       endX = -182
+       endY = -80
+       //compE.setPosition([40,-80,8])        
+       //  compE.setPosition([-60,-80,8]) 
+
+       //startX = comp.getCenter().x + 0; // 0
+       //startY = comp.getCenter().y - 18.2;// 0
+       //endX = destination.x
+       //endY = destination.y
+       deltaX = (endX - startX)/mSteps;
+       deltaY = (endY - startY)/mSteps;
+       var i = 0;
+       function step() {
+          if (i >= mSteps) {
+            complete = true;
+            nextOperation()
+            return;
+            }
+          else {
+             const newX = startX + (i * deltaX)
+             const newY = startY + (i * deltaY)
+             comp.setPosition([newX, newY, 0]);
+             stage.viewer.requestRender();
+             setTimeout(step, 50);
+             i++;
+             } // else
+           } // function step
+        step()
+        //nextOperation()        
+        console.log("--- leaving photonTravel")
+        } // photonTravel
+    //------------------------------------------------------------
+     window.plastoCyaninTravel = plastoCyaninTravel
+
+
+
+
+    }); // DOMContentLoaded
+//--------------------------------------------------------------------------------
+function absorbPhoton()
+{
+   excitedRepA.setVisibility(true)
+   sun.setVisibility(false)
+   stage.autoView(2000);
+
+} // absorbPhoton
+
+window.absorbPhoton = absorbPhoton;
+//--------------------------------------------------------------------------------
+
+// Blink sequence: simulates photon absorption → excited state → relaxation.
+// Each entry is [visible, durationMs].
+
+    const BLINK_SEQUENCE = [
+        [true,  300],  // photon absorbed → excited state
+        [false, 150],  // brief dark
+        [true,  300],  // vibrational re-excitation
+        [false, 150],
+        [true,  500],  // longer excited state (energy trapped)
+        [false,   0]   // relaxed – done
+        ];
+
+function firePhoton() {
+   let i = 0;
+   var complete = false;
+   function step() {
+      if (i >= BLINK_SEQUENCE.length) {
+         complete = true;
+         }
+     if(!complete){
+        const [visible, delay] = BLINK_SEQUENCE[i++];
+        excitedRepA.setVisibility(visible);
+        stage.viewer.requestRender();
+        setTimeout(step, delay);
+       }
+       }
+
+   step();
+
+} // firePhoton
+//--------------------------------------------------------------------------------
+const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+async function waitDemo(){
+    photonTravel(sun, {x: 40.5, y: -11.7}).then(
+     (value) => { console.log("travel good")},
+     (error) => { console.log("travel error")});
+    console.log("--- travel complete");
+    //await sleep(4000); // Pauses execution for 2 seconds
+    //firePhoton();
+    console.log("Done!");
+    }
+//--------------------------------------------------------------------------------
+function CLA_illuminate()
+{
+    travel(sun,  firePhoton)
+    // firePhoton()
+
+} // energizeCLA
+//--------------------------------------------------------------------------------
+
+  </script>
+</body>
+</html>
