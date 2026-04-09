@@ -76,10 +76,17 @@ import {Chlorophyll} from './chlorophyll.js';
 import {Photosystem2} from './ps2.js';  
 import {Photon} from './photon.js';  
 import {Pheophytin} from './pheophytin.js';  
+import {Plastoquinone} from './plastoquinone.js';  
+import {Cytochrome} from './cytochromeBF6.js';  
+import {Plastocyanin} from './plastocyanin.js';  
+import {Photosystem1} from './ps1.js';  
 
 //---------------------------------------------------------------------------
 // define, create, initialize the basics
 //--------------------------------------
+
+const DEG = Math.PI / 180;
+
 
     $("#lauchPhotonButton").attr('disabled', false);
     $("#etcStep1-button").attr('disabled', true);
@@ -87,19 +94,7 @@ import {Pheophytin} from './pheophytin.js';
     $("#etcStep3-button").attr('disabled', true);
     $("#etcStep4-button").attr('disabled', true);
     $("#etcStep5-button").attr('disabled', true);
-
-    const server = "http://127.0.0.1:5519/pdb/"
-    var pdbA = "cla-no-tail.pdb"
-    var pdbB = "pheophytin-no-tail.pdb"
-    var pdbC = "p19-no-tail.pdb"
-    var pdbD = "cytochrome-bf6-heme-porphyrin.pdb"
-    var pdbE = "3BQV-plastocyanin.pdb"
-    var pdbSun = "sun.pdb"
-    var pdbPS1 = "7NHO.pdb"
-    var pdbPS2 = "1s5l.pdb"
     
-    const DEG = Math.PI / 180;
-
     document.addEventListener("DOMContentLoaded", async () => {
       console.log("dom content loaded");
       const stage = new NGL.Stage("viewport", { backgroundColor: "beige" });
@@ -111,35 +106,187 @@ import {Pheophytin} from './pheophytin.js';
       const photon = new Photon(stage)
       await photon.load()
       photon.buildRepresentations()
+      photon.setLocation(100,0,0)
       photon.afterLoad()
       window.photon = photon;
 
       const cla = new Chlorophyll(stage);
       await cla.load()
       cla.buildRepresentations()
+      cla.setLocation(20, -43, -53.8)
       cla.afterLoad()
-      stage.autoView()
       window.cla = cla
 
       const ps2 = new Photosystem2(stage)
       await ps2.load()
       ps2.buildRepresentations()
+      ps2.setLocation(0,0,0)      
       window.ps2 = ps2
-
-      stage.autoView()
 
       const pheo = new Pheophytin(stage);
       await pheo.load()
       pheo.buildRepresentations()
+      pheo.setLocation(0, 0, 2.12)
       pheo.afterLoad()
-      stage.autoView()
       window.pheo = pheo;
 
+      const plasto = new Plastoquinone(stage);
+      await plasto.load()
+      plasto.buildRepresentations()
+      plasto.setLocation(16,-20,15)
+      plasto.afterLoad()
+      window.plasto = plasto;
 
+      const cytochrome = new Cytochrome(stage);
+      await cytochrome.load()
+      cytochrome.buildRepresentations()
+      cytochrome.setLocation(-147, -205, -178)
+      cytochrome.afterLoad()
+      window.cytochrome = cytochrome;
+
+      const plastocyanin = new Plastocyanin(stage);
+      await plastocyanin.load()
+      plastocyanin.buildRepresentations()
+      plastocyanin.setLocation(40, -80, 8)
+      plastocyanin.afterLoad()
+      window.plastocyanin = plastocyanin;
+
+      const ps1 = new Photosystem1(stage);
+      await ps1.load()
+      ps1.buildRepresentations()
+      ps1.setLocation(-360,-220,-60)
+      ps1.afterLoad()
+      window.ps1 = ps1;
+        
+      stage.autoView()
 
       }) // DOMContentLoaded
 //---------------------------------------------------------------------------
 </script>
+
+
+<script>
+
+      $("#chlorophyllButton").on('click', function(){
+          if(window.chlorophyll){
+            ps2.setVisibility(false)
+            window.chlorophyll = false
+            }
+          else {
+            ps2.setVisibility(true)
+            window.chlorophyll = true;
+            stage.autoView()
+            stage.setSpin(true)
+            window.spinning = true;
+            }
+          })
+
+
+      $("#launchPhotonButton").on('click', function(){
+         nextOperation = function(){console.log("absorb photon")};
+         photon.travel()// sun, {x: 40.5, y: -11.7}, nextOperation)
+         $("#etcStep1-button").attr('disabled', false);
+         $("#etcStep2-button").attr('disabled', true);
+         $("#etcStep3-button").attr('disabled', true);
+         $("#etcStep4-button").attr('disabled', true);
+         })
+
+      $("#etcStep1-button").on('click', function(){
+         console.log("transport electron button")
+         excitedRepA.setVisibility(false);
+         excitedRepB.setVisibility(true);
+         $("#etcStep1-button").attr('disabled', true);
+         $("#etcStep2-button").attr('disabled', false);
+         $("#etcStep3-button").attr('disabled', true);
+         $("#etcStep4-button").attr('disabled', true);
+
+
+         })
+
+      $("#etcStep2-button").on('click', function(){
+         console.log("transport electron button")
+         excitedRepB.setVisibility(false);
+         excitedRepC.setVisibility(true);
+         $("#etcStep1-button").attr('disabled', true);
+         $("#etcStep2-button").attr('disabled', true);
+         $("#etcStep3-button").attr('disabled', false);
+         $("#etcStep4-button").attr('disabled', true);
+         })
+
+      $("#etcStep3-button").on('click', function(){
+         console.log("transport electron button")
+         excitedRepC.setVisibility(false);
+         excitedRepD.setVisibility(true);
+         $("#etcStep1-button").attr('disabled', true);
+         $("#etcStep2-button").attr('disabled', true);
+         $("#etcStep3-button").attr('disabled', true);
+         $("#etcStep4-button").attr('disabled', false);
+         })
+
+      $("#etcStep4-button").on('click', function(){
+         $("#etcStep1-button").attr('disabled', true);
+         $("#etcStep2-button").attr('disabled', true);
+         $("#etcStep3-button").attr('disabled', true);
+         $("#etcStep4-button").attr('disabled', true);
+         $("#etcStep5-button").attr('disabled', false);
+         console.log("transport electron button")
+         excitedRepD.setVisibility(false);
+         excitedRepE.setVisibility(true);
+         })
+
+      $("#etcStep5-button").on('click', function(){
+         $("#etcStep1-button").attr('disabled', true);
+         $("#etcStep2-button").attr('disabled', true);
+         $("#etcStep3-button").attr('disabled', true);
+         $("#etcStep4-button").attr('disabled', true);
+         $("#etcStep5-button").attr('disabled', true);
+         compPS1.addRepresentation("spaceFill", {color: "residueIndex"})
+         window.ps1 = compPS1;
+         ps1.setPosition([-360,-220,-60])
+         excitedRepE.setVisibility(true);
+         stage.autoView(2000)
+         function finalView(){E.autoView(2000)}
+         plastoCyaninTravel(finalView)
+         //compE.setPosition([40,-80,8])        
+         //compE.setPosition([-60,-80,8]) 
+         })
+
+      $("#resetView-button").on('click', function(){
+        excitedRepB.setVisibility(false);
+        excitedRepC.setVisibility(false);
+        excitedRepD.setVisibility(false);
+        excitedRepE.setVisibility(false);
+
+        stage.viewerControls.orient(initialView)
+        compA.setPosition ([20,   -43,   -53.8])
+        compB.setPosition( [0,       0,  2.12])
+        compC.setPosition([16,-20,15])
+        compD.setPosition([-147, -205, -178])
+        compE.setPosition([40,-80,8])        
+        compSun.setPosition([100,0,0])
+        compSun.setVisibility(true)
+        compPS1.setPosition([-360,-220,-60])
+        stage.autoView()
+         })
+
+     $("#spinButton").on('click', function(){
+        console.log("window.spinning? " + window.spinning)
+        if(window.spinning){
+          stage.setSpin(false)
+          window.spinning = false
+          }
+        else{
+          stage.setSpin(true)
+          window.spinning = true;
+          }
+        })
+        
+     $("#etcOnlyView-button").on('click', function(){
+        stage.animationControls.zoomMove(cla.component.getCenter(), -250, 2000)
+        })
+
+</script> 
+
 
 </html>
   
