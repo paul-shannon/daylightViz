@@ -29,7 +29,13 @@ export class Photon extends Molecule {
     }
 
     travel(){
-       let nextOperation = function(){console.log("after photon move")}
+       const self = this;
+       let nextOperation = function(){
+           console.log("absorb photon")
+           self.hide()
+           cla.excite()
+           stage.autoView(2000);
+           }
        this.move([40.5, -11.7, 0], 20, 100, nextOperation)
        }
 

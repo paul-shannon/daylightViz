@@ -23,7 +23,12 @@ export class Plastocyanin extends Molecule {
     this.component.addRepresentation("spacefill",
                                      {sele: "CU",
                                      radiusScale: 1})
-    }
+    this.excitedRep = this.component.addRepresentation("spacefill",
+                                     {sele: "CU",
+                                      radiusScale: 3,
+                                      color: "yellow"})
+     this.excitedRep.setVisibility(false)
+     }
 
   afterLoad() {
     this.component.setPosition([40,-80,8])        
@@ -31,9 +36,20 @@ export class Plastocyanin extends Molecule {
     }
 
   travel(){
-     let nextOperation = function(){console.log("after plastocyanin move")}
-     this.move([-222, -72, 91], 50, 100, nextOperation)
-  }
+    let nextOperation = function(){
+        console.log("after plastocyanin move")
+        stage.animationControls.zoomMove({x: -120, y: -67, z: 29}, -200, 2000)
+        }
+     this.move([-180, -72, 91], 50, 100, nextOperation)
+     }
+
+  excite(){
+     this.excitedRep.setVisibility(true);
+     };
+
+   relax() {
+     this.excitedRep.setVisibility(false);
+     }
 
 } // class Plastocyanin
 
