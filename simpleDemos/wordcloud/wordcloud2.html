@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Word Cloud with Events</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.2.3/wordcloud2.min.js"></script>
+    <style>
+        #wordcloud-canvas {
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+        #info-panel {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 50px;
+            font-family: Arial, sans-serif;
+        }
+        .word-highlight {
+            background-color: #e3f2fd;
+        }
+    </style>
+</head>
+<body>
+    <h1>Interactive Word Cloud</h1>
+    <canvas id="wordcloud-canvas" width="600" height="400" style="border: 1px solid #ccc;"></canvas>
+    
+    <div id="info-panel">
+        <p>Hover over or click on any word above</p>
+    </div>
+
+    <script>
+
+        // Wait for the page to load
+        document.addEventListener('DOMContentLoaded', function() {
+            var canvas = document.getElementById('wordcloud-canvas');
+            window.canvas = canvas;
+            const ctx = canvas.getContext('2d')
+            window.ctx = ctx;
+            var infoPanel = document.getElementById('info-panel');
+            
+            // Define your words
+            var words = [
+                         ["-abac", 1],
+                         ["-al", 1],
+                         ["-buɬʔ", 1],
+                         ["-dxʷ", 1],
+                         ["-əxʷ", 1],
+                         ["-gʷiɬ", 1],
+                         ["-s", 1],
+                         ["-t", 1],
+                         ["-yi", 1],
+                         ["–alikʷ", 1],
+                         ["–aɬ", 1],
+                         ["–čal=s", 1],
+                         ["–əb", 1],
+                         ["–id", 1],
+                         ["–iʔ", 1],
+                         ["–ʔal", 1],
+                         ["?as-", 1],
+                         ["həbuʔ", 1],
+                         ["•alʔtxʷ", 1],
+                         ["•ič", 1],
+                         ["•y", 1],
+                         ["=ad", 1],
+                         ["=al=", 1],
+                         ["=aɬi", 1],
+                         ["=t̓əd", 1],
+                         ["=ʔəxʷ", 1],
+                         ["ad–", 1],
+                         ["as–", 1],
+                         ["bəč", 1],
+                         ["bək̓ʷ", 1],
+                         ["bəq̓", 1],
+                         ["bi-", 1],
+                         ["c̓agʷa", 1],
+                         ["čal", 1],
+                         ["čal", 1],
+                         ["čal(a)", 1],
+                         ["čal=", 1],
+                         ["čala–d", 1],
+                         ["čalə", 1],
+                         ["čəda", 1],
+                         ["cədiɬ", 1],
+                         ["č̓əl-", 1],
+                         ["č̓əlp", 1],
+                         ["čəxʷa", 1],
+                         ["č̓it", 1],
+                         ["d–", 1],
+                         ["daʔxʷ", 1],
+                         ["dč̓aʔkʷbixʷ", 1],
+                         ["dəb", 1],
+                         ["dəč̓uʔ", 1],
+                         ["dibəɬ", 1],
+                         ["diʔaʔ", 1],
+                         ["dukʷ", 1],
+                         ["dxʷ-", 1],
+                         ["dᶻixʷ", 1],
+                         ["əxʷ", 1],
+                         ["gʷəč̓", 1],
+                         ["gʷəč̓–d", 1],
+                         ["gʷəgʷadgʷəd", 1],
+                         ["gʷəq", 1],
+                         ["gʷiɬ", 1],
+                         ["had–had", 1],
+                         ["hagʷ", 1],
+                         ["hay–", 1],
+                         ["həbuʔ", 1],
+                         ["kayiɬ", 1],
+                         ["kʷədiʔ", 1],
+                         ["laʔ", 1],
+                         ["ləgʷ-", 1],
+                         ["ləgʷəb", 1],
+                         ["ləs–", 1],
+                         ["lu–", 1],
+                         ["ɬaɬlil", 1],
+                         ["ɬəgʷɬ", 1],
+                         ["ɬu=ʔ", 1],
+                         ["ɬukʷaɬ", 1],
+                         ["ƛ̓aʔa", 1],
+                         ["ƛ̓uc̓", 1],
+                         ["pəd–", 1],
+                         ["pəkʷib", 1],
+                         ["puʔu", 1],
+                         ["qada", 1],
+                         ["q̓il", 1],
+                         ["q̓ʷəɬəb", 1],
+                         ["qʷiq̓ʷ", 1],
+                         ["qʷɬaʔy", 1],
+                         ["q̓xʷ-", 1],
+                         ["q̓xʷul̓gʷədxʷ", 1],
+                         ["s-", 1],
+                         ["s=xʷəxʷaʔxʷəʔ", 1],
+                         ["ša", 1],
+                         ["šac̓", 1],
+                         ["saq̓ʷ", 1],
+                         ["sə-", 1],
+                         ["šədᶻal", 1],
+                         ["šəɬ", 1],
+                         ["səsaliʔ", 1],
+                         ["ši–", 1],
+                         ["sɬagʷid", 1],
+                         ["šq", 1],
+                         ["sqəlalitut", 1],
+                         ["stiqayuʔ", 1],
+                         ["stub–", 1],
+                         ["šul", 1],
+                         ["sʷatixʷtəd", 1],
+                         ["swəwaʔ", 1],
+                         ["syəyəhub", 1],
+                         ["sʔušəbabdxʷ", 1],
+                         ["taʔtəbac", 1],
+                         ["tədzil", 1],
+                         ["təlaʷil", 1],
+                         ["tiləb", 1],
+                         ["titčul̓bixʷ", 1],
+                         ["tu", 1],
+                         ["t̓uk̓ʷ", 1],
+                         ["tul̓-", 1],
+                         ["tul̓–", 1],
+                         ["ubš", 1],
+                         ["ul̓gʷədxʷ", 1],
+                         ["wəq̓", 1],
+                         ["wəq̓–", 1],
+                         ["x̌ʷal̓", 1],
+                         ["xʷi", 1],
+                         ["x̌ʷil", 1],
+                         ["x̌ʷil–", 1],
+                         ["ʔab", 1],
+                         ["ʔaciɬ", 1],
+                         ["ʔaciɬtabixʷ", 1],
+                         ["ʔalq̓ʷ", 1],
+                         ["ʔayʔəds", 1],
+                         ["ʔaʔyəd", 1],
+                         ["ʔəɬəd", 1],
+                         ["ʔitut", 1],
+                         ["ʔiwəd", 1],
+                         ["ʔuˑ", 1],
+                         ["-il", 2],
+                         ["–agʷil", 2],
+                         ["–i", 2],
+                         ["–yi", 2],
+                         ["•ačiʔ", 2],
+                         ["•al", 2],
+                         ["•dat", 2],
+                         ["•əɬ", 2],
+                         ["•gʷiɬ", 2],
+                         ["=a", 2],
+                         ["=əs", 2],
+                         ["=gʷiɬ", 2],
+                         ["abac", 2],
+                         ["bəščəb", 2],
+                         ["cəb", 2],
+                         ["čəɬ", 2],
+                         ["č̓it", 2],
+                         ["ck̓usəd", 2],
+                         ["diʔ", 2],
+                         ["dxʷ", 2],
+                         ["gʷax̌ʷ", 2],
+                         ["gʷaʔxʷ", 2],
+                         ["gʷəd", 2],
+                         ["hay", 2],
+                         ["hədʔiw̓", 2],
+                         ["ɬaq̓", 2],
+                         ["ɬaʔ", 2],
+                         ["ɬixʷ", 2],
+                         ["ƛ̓ip̓", 2],
+                         ["pəd", 2],
+                         ["qaw'qs", 2],
+                         ["q̓il̓bid", 2],
+                         ["qʷəlub", 2],
+                         ["qʷəɬ–", 2],
+                         ["qʷɬayʔ", 2],
+                         ["saxʷəb-", 2],
+                         ["šəq", 2],
+                         ["siʔ", 2],
+                         ["šuɬ", 2],
+                         ["təlawil", 2],
+                         ["tu-", 2],
+                         ["xʷəʔaʔxʷəʔ", 2],
+                         ["ʔaɬ", 2],
+                         ["ʔəca", 2],
+                         ["ʔiɬ–", 2],
+                         ["ʔix̌ʷ", 2],
+                         ["•čup", 3],
+                         ["•ucid", 3],
+                         ["ad=", 3],
+                         ["bəs–", 3],
+                         ["bəsad", 3],
+                         ["buus", 3],
+                         ["haʔɬ", 3],
+                         ["həlgʷəʔ", 3],
+                         ["ləq̓aɬ", 3],
+                         ["lil", 3],
+                         ["liɬ–", 3],
+                         ["ƛ̓al̓", 3],
+                         ["ƛ̓ub", 3],
+                         ["q̓ʷaɬ", 3],
+                         ["qʷšab", 3],
+                         ["stab", 3],
+                         ["x̌ək̓ʷ", 3],
+                         ["ʔacəc", 3],
+                         ["ʔəx̌id", 3],
+                         ["ʔi", 3],
+                         ["ʔuluɬ", 3],
+                         ["•us", 4],
+                         ["čala", 4],
+                         ["haʔkʷ", 4],
+                         ["kʷəd", 4],
+                         ["luƛ̓", 4],
+                         ["siʔab", 4],
+                         ["swatixʷtəd", 4],
+                         ["tədᶻil", 4],
+                         ["tux̌ʷ", 4],
+                         ["wač", 4],
+                         ["xʷəxʷaʔxʷəʔ", 4],
+                         ["yəx̌i", 4],
+                         ["ʔa", 4],
+                         ["ʔəƛ̓", 4],
+                         ["diɬ", 5],
+                         ["gʷat", 5],
+                         ["huy", 5],
+                         ["kʷəda", 5],
+                         ["ʔu", 5],
+                         ["–sut", 6],
+                         ["•abac", 6],
+                         ["•ič", 6],
+                         ["ɬax̌", 6],
+                         ["ƛ̓əlayʔ", 6],
+                         ["tudiʔ", 6],
+                         ["uʔxʷ", 6],
+                         ["–c", 7],
+                         ["–s", 7],
+                         ["–txʷ", 7],
+                         ["čəd", 7],
+                         ["d=", 7],
+                         ["qaw̓qs", 7],
+                         ["saxʷəb", 7],
+                         ["ʔaciɬtalbixʷ", 7],
+                         ["–bi", 8],
+                         ["čəɬ", 8],
+                         ["cut", 8],
+                         ["diʔəʔ", 8],
+                         ["ti", 8],
+                         ["bə=", 9],
+                         ["huyu", 9],
+                         ["ɬčil", 9]
+            ];
+            
+
+            // Create the word cloud
+            function redraw(){
+            WordCloud(canvas, {
+                list: words.map(item => [item[0], item[1]]), // Extract just word and weight
+                gridSize: 10,
+                weightFactor: 3,
+                // fontFamily: 'Arial, sans-serif',
+                backgroundColor: '#f8f9fa',
+                hover: function(item, dimension, event) {
+                  console.log("hover")
+                  if (Array.isArray(item)) {
+                    console.log('Hovered over word: ' + item[0] + ' with frequency: ' + item[1]);
+                    // You can add custom logic here, like showing a tooltip in a specific div
+                    // document.getElementById("myTooltipBox").innerHTML = item[0] + ': ' + item[1];
+                    } else {
+                     // The item is null when the cursor leaves a word region
+                    console.log('Cursor left a word');
+                    }
+                  },
+                click: function(item, dimension, event) {
+                    if (item) {
+                        var word = item[0];
+                        var weight = item[1];
+                        var wordData = words.find(w => w[0] === word);
+                        var metadata = wordData ? wordData[2] : {};
+                        
+                        infoPanel.innerHTML = `
+                            <strong>Clicked:</strong> ${word}<br>
+                            <strong>Weight/Size:</strong> ${weight}<br>
+                        `;
+                        
+                        // Example: Open a URL (uncomment to test)
+                        // if (word === 'JavaScript') window.open('https://developer.mozilla.org/', '_blank');
+                        
+                        // Example: Change background color based on selection
+                        canvas.style.border = '2px solid #4CAF50';
+                        setTimeout(() => canvas.style.border = '1px solid #ccc', 200);
+                    }
+                }
+            })};
+            redraw()
+
+            // Custom mouse-enter detection using canvas hit detection
+            // This is a workaround since wordcloud2 doesn't have built-in hover events
+            canvas.addEventListener('jjmousemove', function(event) {
+                var rect = canvas.getBoundingClientRect();
+                var scaleX = canvas.width / rect.width;
+                var scaleY = canvas.height / rect.height;
+                
+                var mouseX = (event.clientX - rect.left) * scaleX;
+                var mouseY = (event.clientY - rect.top) * scaleY;
+                
+                // Use the WordCloud hit detection
+                var hit = WordCloud.hitTest(canvas, mouseX, mouseY);
+                
+                if (hit && hit[0]) {
+                    // Mouse is over a word
+                    var word = hit[0];
+                    var wordData = words.find(w => w[0] === word);
+                    
+                    // Update info panel with hover info
+                    infoPanel.innerHTML = `
+                        <strong>Hovering over:</strong> ${word}<br>
+                        <strong>Category:</strong> ${wordData ? wordData[2].category : 'unknown'}<br>
+                        <em>Click for more details or custom action</em>
+                    `;
+                    
+                    // Change cursor to pointer
+                    canvas.style.cursor = 'pointer';
+                } else {
+                    // Mouse is not over a word
+                    canvas.style.cursor = 'default';
+                }
+            });
+
+      let scale = 1;
+      const ZOOM_FACTOR = 1.1; // Amount to zoom per scroll
+      function handleMouseWheel(event) {
+         event.preventDefault();
+         const rect = canvas.getBoundingClientRect();
+         const mouseX = event.clientX - rect.left;
+         const mouseY = event.clientY - rect.top;
+         ctx.translate(mouseX, mouseY);
+         const delta = event.deltaY < 0 ? ZOOM_FACTOR : 1 / ZOOM_FACTOR;
+         ctx.scale(delta, delta);
+         scale *= delta;
+         ctx.translate(-mouseX, -mouseY);
+         drawScene();
+      };
+      function drawScene() {
+         console.log("drawing scene")
+         ctx.save();
+         ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset transform to clear the whole canvas
+         ctx.clearRect(0, 0, canvas.width, canvas.height);
+         ctx.restore(); // Restore the saved transform
+          redraw()
+         };
+ 
+         canvas.addEventListener("wheel", handleMouseWheel)
+
+            
+            // Optional: Add double-click handler using the same canvas
+            canvas.addEventListener('dblclick', function(event) {
+                var rect = canvas.getBoundingClientRect();
+                var scaleX = canvas.width / rect.width;
+                var scaleY = canvas.height / rect.height;
+                
+                var mouseX = (event.clientX - rect.left) * scaleX;
+                var mouseY = (event.clientY - rect.top) * scaleY;
+                
+                var hit = WordCloud.hitTest(canvas, mouseX, mouseY);
+                
+                if (hit && hit[0]) {
+                    var word = hit[0];
+                    alert(`Double-clicked on: ${word}\nYou could open a detailed view here!`);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
