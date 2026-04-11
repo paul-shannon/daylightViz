@@ -50,7 +50,8 @@
 <body>
   <div class="sidebar">
     <div><button id="ps2Button">Photosystem II</button></div>
-    <div><button id="etcButton">ETC</button></div>
+    <div style="margin-top: 5px;"><button id="ps2CofactorButton">Cofactors</button></div>
+    <div style="margin-top: 5px;"><button id="etcButton">ETC</button></div>
     <div style="margin-top: 5px;"><button id="launchPhotonButton"> Launch Photon to Chlorophyll</button></div>
     <div style="margin-top: 5px;"><button id="spinButton"> Spin</button></div>
     <div style="margin-top: 20px;">
@@ -200,6 +201,12 @@ document.addEventListener("DOMContentLoaded", async () => {
           go()
           })
 
+      $("#ps2CofactorButton").on('click', function(){
+          console.log("ps2CofactorButton")
+          ps2.proteinRep.setVisibility(false)
+          ps2.oecRep.setVisibility(false)
+          })
+
       $("#etcButton").on('click', function(){
          async function go(){
            if (typeof ps2 !== 'undefined'){
@@ -316,7 +323,7 @@ document.addEventListener("DOMContentLoaded", async () => {
          $("#etcStep4-button").attr('disabled', true);
          $("#etcStep5-button").attr('disabled', true);
          ps1.restore()
-         stage.animationControls.zoomMove({x: -89, y: -67, z: 50}, -500, 2000)
+         stage.animationControls.zoomMove({x: -89, y: -67, z: 50}, -600, 2000)
          plastocyanin.travel()
          //stage.animationControls.zoomMove({x: -120, y: -67, z: 29}, -200, 2000)
          //stage.animationControls.zoomMove({x: -120, y: -67, z: 29}, -200, 2000)

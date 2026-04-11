@@ -14,12 +14,15 @@ export class Photosystem2 extends Molecule {
      }
 
   buildRepresentations() {
-    this.component.addRepresentation("cartoon",    {sele: ":A", color: "residueIndex"})
-    this.component.addRepresentation("spacefill",  {sele: "[OEC] AND :A"})
+    this.proteinRep = this.component.addRepresentation("cartoon",    {sele: ":A", color: "residueIndex"})
+    this.oecRep = this.component.addRepresentation("spacefill",  {sele: "[OEC] AND :A"})
     this.component.addRepresentation("ball+stick", {sele: "[CLA] AND 352 AND :A"})
     this.component.addRepresentation("ball+stick", {sele: "[PL9] AND 353 AND :A"})
     this.component.addRepresentation("ball+stick", {sele: "[PHE] AND 33 :A"})
     this.component.setVisibility(true);
+    //this.cofactorRep = this.component.addRepresentation("spacefill",
+    //                              {sele: "([CLA] AND 352) OR ([PL9] and 353) OR ([PHE] AND 33 and :A)"})
+    //this.cofactorRep.setVisibility(false);
     }
 
   afterLoad() {

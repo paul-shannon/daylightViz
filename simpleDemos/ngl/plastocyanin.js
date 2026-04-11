@@ -38,7 +38,7 @@ export class Plastocyanin extends Molecule {
   travel(){
     let nextOperation = function(){
         console.log("after plastocyanin move")
-        stage.animationControls.zoomMove({x: -120, y: -67, z: 29}, -200, 2000)
+        stage.animationControls.zoomMove({x: -120, y: -67, z: 29}, -400, 2000)
         }
      this.move([-180, -72, 91], 50, 100, nextOperation)
      }
