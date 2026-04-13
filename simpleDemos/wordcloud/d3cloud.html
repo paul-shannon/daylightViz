@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>d3-cloud: Lushootseed Radicals</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3-cloud@1.2.7/build/d3.layout.cloud.js"></script>
+  <script src="alt.libraries/Radicals.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f9fa;
+      margin: 0;
+      padding: 16px;
+    }
+    h2 {
+      margin: 0 0 8px 0;
+      color: #333;
+    }
+    #controls {
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    #redraw-btn {
+      padding: 6px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      border: 1px solid #888;
+      border-radius: 4px;
+      background: #fff;
+    }
+    #redraw-btn:hover { background: #e8e8e8; }
+    #seed-label { font-size: 13px; color: #555; }
+    #cloud-container {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #fff;
+      display: inline-block;
+    }
+    #info-panel {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #fff;
+      min-height: 48px;
+      font-size: 14px;
+      max-width: 800px;
+    }
+    #info-panel strong { color: #1a237e; }
+    .word-text {
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .word-text:hover { opacity: 0.7; }
+  </style>
+</head>
+<body>
+  <h2>Lushootseed Radicals — d3-cloud (reproducible layout)</h2>
+  <div id="controls">
+    <button id="redraw-btn">Redraw</button>
+    <span id="seed-label">seed: <code id="seed-display">42</code></span>
+    <span style="font-size:12px;color:#888;">Layout is identical every redraw — try the button!</span>
+  </div>
+  <div id="cloud-container">
+    <svg id="cloud-svg" width="800" height="500"></svg>
+  </div>
+  <div id="info-panel">Click any word to see its definition and frequency.</div>
+
+  <script>
+    // ── Seeded PRNG (LCG) — swap Math.random for this to get reproducible layouts ──
+    function seededRandom(seed) {
+      let s = seed >>> 0;
+      return function () {
+        s = Math.imul(s, 1664525) + 1013904223 >>> 0;
+        return s / 4294967296;
+      };
+    }
+
+    const WIDTH  = 800;
+    const HEIGHT = 500;
+    const SEED   = 42;
+
+    // ── Colour scale: blue (rare) → amber (frequent) ──
+    const colorScale = d3.scaleSequential()
+      .domain([1, 9])
+      .interpolator(d3.interpolateRainbow);
+
+    // ── Build word list from Radicals data ──
+    const radicals = new Radicals();
+    // de-duplicate by radical text, keeping max count
+    const seen = new Map();
+    radicals.data.forEach(d => {
+      const count = d.lines.length;
+      if (!seen.has(d.radical) || seen.get(d.radical).count < count) {
+        seen.set(d.radical, { text: d.radical, definition: d.definition, count });
+      }
+    });
+    const words = Array.from(seen.values()).map(d => ({
+      text:       d.text,
+      definition: d.definition,
+      count:      d.count,
+      size:       12 + d.count * 7   // font size proportional to frequency
+    }));
+
+    // ── Render function called after d3-cloud finishes layout ──
+    function draw(laid_out_words) {
+      const svg = d3.select('#cloud-svg');
+      svg.selectAll('*').remove();
+
+      svg.append('g')
+        .attr('transform', `translate(${WIDTH / 2},${HEIGHT / 2})`)
+        .selectAll('text')
+        .data(laid_out_words)
+        .enter().append('text')
+          .attr('class', 'word-text')
+          .style('font-size',   d => `${d.size}px`)
+          .style('font-family', 'Arial, sans-serif')
+          .style('font-weight', d => d.count >= 6 ? 'bold' : 'normal')
+          .style('fill',        d => colorScale(d.count))
+          .attr('text-anchor', 'middle')
+          .attr('transform',   d => `translate(${d.x},${d.y}) rotate(${d.rotate})`)
+          .text(d => d.text)
+          .on('click', (event, d) => {
+            d3.select('#info-panel').html(
+              `<strong>${d.text}</strong> &nbsp;—&nbsp; ${d.definition}<br>
+               <span style="color:#555;font-size:13px;">appears <strong>${d.count}</strong> time${d.count !== 1 ? 's' : ''} in the corpus</span>`
+            );
+          })
+          .on('mouseenter', function () { d3.select(this).style('opacity', 0.65); })
+          .on('mouseleave', function () { d3.select(this).style('opacity', 1); });
+    }
+
+    // ── Layout builder — always uses the same seed ──
+    function buildCloud() {
+      d3.layout.cloud()
+        .size([WIDTH, HEIGHT])
+        .words(words.map(d => Object.assign({}, d)))   // fresh copy each run
+        .padding(4)
+        .rotate(0)                                      // keep all horizontal
+        .font('Arial')
+        .fontSize(d => d.size)
+        .random(seededRandom(SEED))                     // ← reproducibility key
+        .on('end', draw)
+        .start();
+    }
+
+    buildCloud();
+
+    document.getElementById('redraw-btn').addEventListener('click', buildCloud);
+  </script>
+</body>
+</html>
