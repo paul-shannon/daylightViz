@@ -4,7 +4,8 @@
 
 import {Molecule} from './molecule.js';
 
-const server = "http://127.0.0.1:5519/pdb/"
+//const server = "http://127.0.0.1:5519/pdb/"
+const server = "pdb/"
 const pdb = "cytochrome-bf6-heme-porphyrin.pdb"
 const URL = server + pdb;
 const DEG = Math.PI / 180;

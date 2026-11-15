@@ -3,7 +3,8 @@
  */
 
 import {Molecule} from './molecule.js';
-const server = "http://127.0.0.1:5519/pdb/"
+//const server = "http://127.0.0.1:5519/pdb/"
+const server = "pdb/"
 const pdb = "sun.pdb"
 const URL = server + pdb;
 
