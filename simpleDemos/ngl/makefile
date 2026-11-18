@@ -33,6 +33,9 @@ etcApp:
 photosynthesis:
 	open http://127.0.0.1:$(PORT)/etc/photosynthesis.html
 
+demo:
+	open http://127.0.0.1:5519/etcClass.html 
+
 publish:
 	scp etcClass.html paulshannnon@pshannon.net:public_html/pshannon.net/daylightViz/index.html
 	scp molecule.js  paulshannnon@pshannon.net:public_html/pshannon.net/daylightViz/
